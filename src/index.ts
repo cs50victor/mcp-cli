@@ -2,6 +2,7 @@
 
 import { closest, distance } from 'fastest-levenshtein';
 import { callCommand } from './commands/call.js';
+import { configCommand } from './commands/config.js';
 import { grepCommand } from './commands/grep.js';
 import { infoCommand } from './commands/info.js';
 import { listCommand } from './commands/list.js';
@@ -31,6 +32,7 @@ import { VERSION } from './version.js';
 
 /** Positional subcommands - used for parsing and typo detection */
 const SUBCOMMANDS = [
+  'config',
   'daemon',
   'grep',
   'list',
@@ -44,6 +46,7 @@ interface ParsedArgs {
     | 'grep'
     | 'info'
     | 'call'
+    | 'config'
     | 'daemon'
     | 'registry'
     | 'help'
@@ -98,7 +101,9 @@ function parseArgs(args: string[]): ParsedArgs {
       case '--config':
         result.configInput = args[++i];
         if (!result.configInput) {
-          console.error(formatCliError(missingArgumentError('--config', 'json')));
+          console.error(
+            formatCliError(missingArgumentError('--config', 'path|json')),
+          );
           process.exit(ErrorCode.CLIENT_ERROR);
         }
         break;
@@ -122,6 +127,8 @@ function parseArgs(args: string[]): ParsedArgs {
     result.command = 'list';
   } else if (positional[0] === 'list' || positional[0] === 'ls') {
     result.command = 'list';
+  } else if (positional[0] === 'config') {
+    result.command = 'config';
   } else if (positional[0] === 'daemon') {
     result.command = 'daemon';
     const action = positional[1] as 'start' | 'stop' | 'status' | undefined;
@@ -194,6 +201,7 @@ Usage:
   mcpx                                     List available servers and tools
   mcpx list                                List available servers and tools
   mcpx ls                                  Alias for list
+  mcpx [options] config                    Show config usage and local discovery status
   mcpx [options] grep <pattern>            Search available tools by glob pattern
   mcpx [options] <server>                  Show server tools and parameters
   mcpx [options] <server>/<tool>           Show tool schema and description
@@ -208,13 +216,15 @@ Options:
   -v, --version            Show version number
   -j, --json               Output as JSON (for scripting)
   -d, --with-descriptions  Include tool descriptions
-  -c, --config <json>      Inline server config override (flat or wrapped JSON)
+  -c, --config <path|json> Config file path or inline JSON override
 
 Output:
   stdout                   Tool results and data (default: text, --json for JSON)
   stderr                   Errors and diagnostics
 
 Environment Variables:
+  MCP_CONFIG_PATH          Config file path or inline JSON (alternative to -c)
+  MCPX_USE_LOCAL_CONFIG    Set to "1" to enable .mcp.json / mcp.json discovery
   MCP_DEBUG                Enable debug output
   MCP_TIMEOUT              Request timeout in seconds (default: ${DEFAULT_TIMEOUT_SECONDS})
   MCP_CONCURRENCY          Max parallel server connections (default: ${DEFAULT_CONCURRENCY})
@@ -228,13 +238,18 @@ Environment Variables:
 Examples:
   mcpx                                    # List available servers
   mcpx -d                                 # List with descriptions
+  mcpx config                             # Show default mode + common config paths
   mcpx grep "*file*"                      # Search for file tools
   mcpx time                               # Show server tools
   mcpx time/get_current_time              # Show tool schema
   echo '{"path":"./file"}' | mcpx server/tool -        # Read JSON from stdin
 
-  # Inline override for runtime-specific servers:
+  # Explicit config file or inline override:
+  mcpx -c ~/.mcp.json filesystem/read_file '{"path":"./README.md"}'
   mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' filesystem/read_file '{"path":"./README.md"}'
+
+  # Optional local config discovery for agent shells:
+  MCPX_USE_LOCAL_CONFIG=1 mcpx config
 
 Registry (discover MCP servers):
   mcpx registry                           # Show registry help
@@ -261,10 +276,11 @@ Daemon Mode (persistent connections for stateful servers):
 
 Default Resolution:
   Without -c/--config, mcpx resolves servers from the registry and invokes them in memory.
-  Use -c/--config when you need to override command, args, env, cwd, headers, or tool filters.
-  File-based config discovery (.mcp.json, mcp.json, MCP_CONFIG_PATH) is no longer supported.
+  For agents, the memory server is the default recommendation for cross-session memory.
+  Local .mcp.json / mcp.json discovery is disabled unless MCPX_USE_LOCAL_CONFIG=1.
+  Use -c/--config or MCP_CONFIG_PATH when you need explicit config, or enable MCPX_USE_LOCAL_CONFIG for local file discovery.
 
-Inline Config Formats:
+Config Formats:
   Flat:    {"server": {"command": "...", "args": [...]}}
   Wrapped: {"mcpServers": {"server": {"command": "..."}}}
 `);
@@ -312,6 +328,13 @@ async function main(): Promise<void> {
       await callCommand({
         target: args.target ?? '',
         args: args.args,
+        json: args.json,
+        configInput: args.configInput,
+      });
+      break;
+
+    case 'config':
+      await configCommand({
         json: args.json,
         configInput: args.configInput,
       });

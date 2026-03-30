@@ -35,9 +35,9 @@ export function configNotFoundError(path: string): CliError {
   return {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_NOT_FOUND',
-    message: `Config file support was removed: ${path}`,
+    message: `Config file not found: ${path}`,
     suggestion:
-      "Pass inline JSON with -c/--config instead. Run 'mcpx registry get <server>' to start from the built-in default config.",
+      'Pass a valid path with -c/--config, or set MCP_CONFIG_PATH to a config file you want to use.',
   };
 }
 
@@ -45,11 +45,11 @@ export function configSearchError(): CliError {
   return {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_NOT_FOUND',
-    message: 'Config files are no longer auto-discovered',
+    message: 'No config file selected',
     details:
-      'mcpx now resolves servers from the registry by default and only accepts inline JSON overrides.',
+      'mcpx defaults to registry-backed in-memory servers until you pass -c/--config, set MCP_CONFIG_PATH, or enable local discovery with MCPX_USE_LOCAL_CONFIG=1.',
     suggestion:
-      "Use -c/--config '<json>' when you need to override a registry config.",
+      'Pass -c/--config or MCP_CONFIG_PATH for explicit config, or set MCPX_USE_LOCAL_CONFIG=1 to allow .mcp.json / mcp.json discovery.',
   };
 }
 
@@ -63,17 +63,7 @@ export function configInvalidJsonError(
     message: `Invalid JSON in config input: ${path}`,
     details: parseError,
     suggestion:
-      "Check for syntax errors: missing commas, unquoted keys, trailing commas. Run 'mcpx --help' for inline config examples.",
-  };
-}
-
-export function configInlineOnlyError(input: string): CliError {
-  return {
-    code: ErrorCode.CLIENT_ERROR,
-    type: 'CONFIG_INLINE_ONLY',
-    message: `Config files are no longer supported: ${input}`,
-    suggestion:
-      "Pass inline JSON with -c/--config instead. Example: mcpx -c '{\"time\":{\"command\":\"bunx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-time\"]}}' time/get_current_time '{\"timezone\":\"UTC\"}'",
+      "Check for syntax errors: missing commas, unquoted keys, trailing commas. Run 'mcpx --help' for config examples.",
   };
 }
 
@@ -83,8 +73,7 @@ export function configMissingFieldError(path: string): CliError {
     type: 'CONFIG_MISSING_FIELD',
     message: 'Config input missing required server object',
     details: `Input: ${path}`,
-    suggestion:
-      `Config must have structure: { "mcpServers": { "name": { "command": "...", "args": [...] } } } or { "name": { "command": "...", "args": [...] } }. Run 'mcpx --help' for full examples.`,
+    suggestion: `Config must have structure: { "mcpServers": { "name": { "command": "...", "args": [...] } } } or { "name": { "command": "...", "args": [...] } }. Run 'mcpx --help' for full examples.`,
   };
 }
 
@@ -100,7 +89,7 @@ export function serverNotFoundError(
   const sourceInfo = configSource ? ` (from ${configSource})` : '';
 
   let suggestion =
-    "Run 'mcpx registry list' to see built-in servers, or pass -c/--config with inline JSON for a custom server.";
+    "Run 'mcpx registry list' to see built-in servers, or pass -c/--config with a config file or inline JSON for a custom server.";
 
   if (allServers.length > 0) {
     const match = closest(serverName, allServers);

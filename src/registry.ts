@@ -25,6 +25,8 @@ export interface Registry {
   servers: RegistryServer[];
 }
 
+export const DEFAULT_AGENT_SERVER = 'memory';
+
 const DEFAULT_REGISTRY_URL =
   'https://raw.githubusercontent.com/cs50victor/mcpx/dev/registry/registry.json';
 
@@ -137,4 +139,23 @@ export function findServer(
   return registry.servers.find(
     (s) => s.name.toLowerCase() === name.toLowerCase(),
   );
+}
+
+export function isAgentDefaultServer(name: string): boolean {
+  return name.toLowerCase() === DEFAULT_AGENT_SERVER;
+}
+
+export function sortRegistryServers<T extends { name: string }>(
+  servers: T[],
+): T[] {
+  return [...servers].sort((a, b) => {
+    const aPriority = isAgentDefaultServer(a.name) ? 0 : 1;
+    const bPriority = isAgentDefaultServer(b.name) ? 0 : 1;
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    return a.name.localeCompare(b.name);
+  });
 }

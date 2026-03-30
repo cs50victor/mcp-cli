@@ -3,7 +3,12 @@ import { join } from 'node:path';
 import { $ } from 'bun';
 
 const CLI_PATH = join(import.meta.dir, '..', 'src', 'index.ts');
-const LOCAL_REGISTRY_PATH = join(import.meta.dir, '..', 'registry', 'registry.json');
+const LOCAL_REGISTRY_PATH = join(
+  import.meta.dir,
+  '..',
+  'registry',
+  'registry.json',
+);
 
 describe('subcommand sync', () => {
   test('no args defaults to list output', async () => {
@@ -15,6 +20,11 @@ describe('subcommand sync', () => {
   });
 
   describe('valid subcommands are recognized', () => {
+    test('config', async () => {
+      const result = await $`bun run ${CLI_PATH} config`.nothrow();
+      expect(result.stderr.toString()).not.toContain('Did you mean');
+    });
+
     test('daemon', async () => {
       const result = await $`bun run ${CLI_PATH} daemon`.nothrow();
       expect(result.stderr.toString()).not.toContain('Did you mean');
@@ -35,6 +45,12 @@ describe('subcommand sync', () => {
   });
 
   describe('typos trigger fuzzy matching', () => {
+    test('confg -> config', async () => {
+      const result = await $`bun run ${CLI_PATH} confg`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain("Did you mean 'config'");
+    });
+
     test('deamon -> daemon', async () => {
       const result = await $`bun run ${CLI_PATH} deamon status`.nothrow();
       expect(result.exitCode).toBe(1);

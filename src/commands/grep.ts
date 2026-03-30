@@ -9,17 +9,14 @@ import {
 import {
   type McpServersConfig,
   findDisabledMatch,
+  getConfigSelection,
   getServerConfig,
   isToolAllowedByServerConfig,
   listServerNames,
   loadConfig,
   loadDisabledTools,
 } from '../config.js';
-import {
-  ErrorCode,
-  formatCliError,
-  registryFetchError,
-} from '../errors.js';
+import { ErrorCode, formatCliError, registryFetchError } from '../errors.js';
 import { globToRegex } from '../glob.js';
 import { formatJson, formatSearchResults } from '../output.js';
 import { fetchRegistry, getRegistryUrl } from '../registry.js';
@@ -167,7 +164,7 @@ async function grepRegistry(options: GrepOptions): Promise<void> {
 }
 
 export async function grepCommand(options: GrepOptions): Promise<void> {
-  if (!options.configInput) {
+  if (getConfigSelection(options.configInput).mode === 'registry') {
     await grepRegistry(options);
     return;
   }
@@ -185,9 +182,9 @@ export async function grepCommand(options: GrepOptions): Promise<void> {
   const serverNames = listServerNames(config);
 
   if (serverNames.length === 0) {
-    console.error('Warning: Inline config does not define any servers.');
+    console.error('Warning: Selected config does not define any servers.');
     console.error(
-      `Tip: Run 'mcpx registry list' for built-in servers, or pass -c '{"server":{"command":"..."}}' for a custom server.`,
+      `Tip: Run 'mcpx registry list' for built-in servers, or pass -c '{"server":{"command":"..."}}' or -c /path/to/.mcp.json for a custom server.`,
     );
     return;
   }

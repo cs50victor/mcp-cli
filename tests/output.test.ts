@@ -60,6 +60,22 @@ describe('output', () => {
       const withoutDesc = formatServerList(servers, false);
       expect(withoutDesc).not.toContain('A test tool');
     });
+
+    test('renders optional server labels', () => {
+      const output = formatServerList(
+        [
+          {
+            name: 'memory',
+            label: '[default for agents, highly recommended]',
+            tools: [{ name: 'read_graph', description: '', inputSchema: {} }],
+          },
+        ],
+        false,
+      );
+
+      expect(output).toContain('memory');
+      expect(output).toContain('default for agents');
+    });
   });
 
   describe('formatSearchResults', () => {
@@ -176,27 +192,29 @@ describe('output', () => {
     test('formats registry servers as table', () => {
       const servers = [
         {
+          name: 'memory',
+          description: 'Persistent memory',
+          toolCount: 7,
+          recommended: { command: 'npx', args: ['-y', 'server-memory'] },
+          tools: ['read_graph'],
+        },
+        {
           name: 'filesystem',
           description: 'Read/write files',
           toolCount: 6,
           recommended: { command: 'npx', args: ['-y', 'server'] },
           tools: ['read', 'write'],
         },
-        {
-          name: 'fetch',
-          description: 'HTTP requests',
-          toolCount: 1,
-          recommended: { command: 'uvx', args: ['fetch'] },
-          tools: ['fetch'],
-        },
       ];
 
       const output = formatRegistryList(servers);
+      expect(output).toContain('default for agents');
+      expect(output).toContain('highly recommended');
+      expect(output).toContain('memory');
       expect(output).toContain('filesystem');
       expect(output).toContain('Read/write files');
       expect(output).toContain('6 tools');
-      expect(output).toContain('fetch');
-      expect(output).toContain('1 tool');
+      expect(output).toContain('7 tools');
     });
   });
 
@@ -223,6 +241,23 @@ describe('output', () => {
       expect(output).toContain('read_file');
       expect(output).toContain('Notes');
       expect(output).toContain('Replace /path');
+    });
+
+    test('highlights memory as the default agent recommendation', () => {
+      const output = formatRegistryServer({
+        name: 'memory',
+        description: 'Persistent memory',
+        toolCount: 7,
+        recommended: {
+          command: 'bunx',
+          args: ['-y', '@modelcontextprotocol/server-memory'],
+        },
+        tools: ['read_graph'],
+      });
+
+      expect(output).toContain('default for agents');
+      expect(output).toContain('highly recommended');
+      expect(output).toContain('Recommendation');
     });
 
     test('formats server with envVars', () => {

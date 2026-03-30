@@ -9,19 +9,21 @@ import {
 import {
   type McpServersConfig,
   findDisabledMatch,
+  getConfigSelection,
   getServerConfig,
   isToolAllowedByServerConfig,
   listServerNames,
   loadConfig,
   loadDisabledTools,
 } from '../config.js';
-import {
-  ErrorCode,
-  formatCliError,
-  registryFetchError,
-} from '../errors.js';
+import { ErrorCode, formatCliError, registryFetchError } from '../errors.js';
 import { formatJson, formatServerList } from '../output.js';
-import { fetchRegistry, getRegistryUrl } from '../registry.js';
+import {
+  fetchRegistry,
+  getRegistryUrl,
+  isAgentDefaultServer,
+  sortRegistryServers,
+} from '../registry.js';
 
 export interface ListOptions {
   withDescriptions: boolean;
@@ -108,8 +110,8 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
   }
 
   const disabledPatterns = await loadDisabledTools();
-  const servers = registry.servers
-    .map((server) => {
+  const servers = sortRegistryServers(
+    registry.servers.map((server) => {
       const tools = server.tools
         .filter(
           (toolName) =>
@@ -127,8 +129,8 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
         toolCount: tools.length,
         tools,
       };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    }),
+  );
 
   if (options.json) {
     console.log(
@@ -149,18 +151,21 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
           name: server.name,
           tools: server.tools,
           instructions: server.description,
+          label: isAgentDefaultServer(server.name)
+            ? '[default for agents, highly recommended]'
+            : undefined,
         })),
         options.withDescriptions,
       ),
     );
     console.log(
-      "\nTip: Run 'mcpx <server>' to inspect a server live, or pass -c '<json>' to override the registry config in memory.",
+      "\nTip: Run 'mcpx <server>' to inspect a server live, or pass -c '<path-or-json>' to use a config file or override the registry config in memory.",
     );
   }
 }
 
 export async function listCommand(options: ListOptions): Promise<void> {
-  if (!options.configInput) {
+  if (getConfigSelection(options.configInput).mode === 'registry') {
     await listRegistryServers(options);
     return;
   }
@@ -177,9 +182,9 @@ export async function listCommand(options: ListOptions): Promise<void> {
   const serverNames = listServerNames(config);
 
   if (serverNames.length === 0) {
-    console.error('Warning: Inline config does not define any servers.');
+    console.error('Warning: Selected config does not define any servers.');
     console.error(
-      `Tip: Run 'mcpx registry list' for built-in servers, or pass -c '{"server":{"command":"..."}}' for a custom server.`,
+      `Tip: Run 'mcpx registry list' for built-in servers, or pass -c '{"server":{"command":"..."}}' or -c /path/to/.mcp.json for a custom server.`,
     );
     return;
   }
@@ -239,7 +244,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
   } else {
     console.log(formatServerList(displayServers, options.withDescriptions));
     console.log(
-      "\nTip: Run 'mcpx registry list' for built-in servers, or use -c '<json>' to inspect custom servers live.",
+      "\nTip: Run 'mcpx registry list' for built-in servers, or use -c '<path-or-json>' to inspect custom servers live.",
     );
   }
 }

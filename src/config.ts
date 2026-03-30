@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import {
   ErrorCode,
   configInvalidJsonError,
-  configInlineOnlyError,
+  configNotFoundError,
   formatCliError,
   serverNotFoundError,
 } from './errors.js';
@@ -204,8 +204,113 @@ function normalizeConfig(rawConfig: unknown): {
   return { mcpServers: {} };
 }
 
+function getDefaultConfigPaths(): string[] {
+  const home = homedir();
+
+  return [
+    resolve('./.mcp.json'),
+    resolve('./mcp.json'),
+    join(home, '.mcp.json'),
+    join(home, '.config', 'mcp', 'mcp.json'),
+  ];
+}
+
 function isInlineJson(value: string): boolean {
   return value.trimStart().startsWith('{');
+}
+
+function isLocalConfigDiscoveryEnabled(): boolean {
+  const value = process.env.MCPX_USE_LOCAL_CONFIG?.toLowerCase();
+  return value === '1' || value === 'true';
+}
+
+function findDiscoveredConfigPath(): string | undefined {
+  return getDefaultConfigPaths().find((path) => existsSync(path));
+}
+
+export interface ConfigSelection {
+  mode: 'registry' | 'inline' | 'file';
+  input?: string;
+  source?: 'cli' | 'env' | 'local';
+}
+
+export function getConfigSelection(explicitInput?: string): ConfigSelection {
+  const envValue = process.env.MCP_CONFIG_PATH;
+
+  if (explicitInput) {
+    if (isInlineJson(explicitInput)) {
+      return { mode: 'inline', input: explicitInput, source: 'cli' };
+    }
+
+    return { mode: 'file', input: resolve(explicitInput), source: 'cli' };
+  }
+
+  if (envValue) {
+    if (isInlineJson(envValue)) {
+      return { mode: 'inline', input: envValue, source: 'env' };
+    }
+
+    return { mode: 'file', input: resolve(envValue), source: 'env' };
+  }
+
+  if (isLocalConfigDiscoveryEnabled()) {
+    const discoveredPath = findDiscoveredConfigPath();
+
+    if (discoveredPath) {
+      return { mode: 'file', input: discoveredPath, source: 'local' };
+    }
+  }
+
+  return { mode: 'registry' };
+}
+
+export interface ConfigPathInfo {
+  path: string;
+  exists: boolean;
+  active: boolean;
+  source?: 'cli' | 'env' | 'local' | 'default';
+}
+
+export interface ConfigPathsResult {
+  mode: 'registry' | 'inline' | 'file';
+  active: string | null;
+  activeSource: 'cli' | 'env' | 'local' | null;
+  localDiscoveryEnabled: boolean;
+  searchPaths: ConfigPathInfo[];
+  envVar: string | undefined;
+}
+
+export function getConfigPaths(explicitInput?: string): ConfigPathsResult {
+  const envValue = process.env.MCP_CONFIG_PATH;
+  const localDiscoveryEnabled = isLocalConfigDiscoveryEnabled();
+  const selection = getConfigSelection(explicitInput);
+  const active = selection.mode === 'file' ? (selection.input ?? null) : null;
+  const activeSource = selection.source ?? null;
+
+  const searchPaths: ConfigPathInfo[] = getDefaultConfigPaths().map((path) => ({
+    path,
+    exists: existsSync(path),
+    active: active === path,
+    source: active === path && activeSource === 'local' ? 'local' : 'default',
+  }));
+
+  if (active && !searchPaths.some((info) => info.path === active)) {
+    searchPaths.unshift({
+      path: active,
+      exists: existsSync(active),
+      active: true,
+      source: activeSource ?? 'default',
+    });
+  }
+
+  return {
+    mode: selection.mode,
+    active,
+    activeSource,
+    localDiscoveryEnabled,
+    searchPaths,
+    envVar: envValue,
+  };
 }
 
 export interface LoadConfigOptions {
@@ -213,33 +318,55 @@ export interface LoadConfigOptions {
 }
 
 export async function loadConfig(
-  explicitPath?: string,
+  explicitInput?: string,
   _options?: LoadConfigOptions,
 ): Promise<McpServersConfig> {
-  if (!explicitPath) {
+  const selection = getConfigSelection(explicitInput);
+
+  if (selection.mode === 'registry') {
     return { mcpServers: {}, _configSource: 'registry' };
   }
 
-  if (!isInlineJson(explicitPath)) {
-    throw new Error(
-      formatCliError(configInlineOnlyError(resolve(explicitPath))),
-    );
-  }
-
   let rawConfig: unknown;
-  try {
-    rawConfig = JSON.parse(explicitPath);
-  } catch (e) {
-    throw new Error(
-      formatCliError(configInvalidJsonError('<inline>', (e as Error).message)),
-    );
+  let configSource: string;
+
+  if (selection.mode === 'inline') {
+    configSource = 'inline';
+    try {
+      rawConfig = JSON.parse(selection.input ?? '');
+    } catch (e) {
+      throw new Error(
+        formatCliError(
+          configInvalidJsonError('<inline>', (e as Error).message),
+        ),
+      );
+    }
+  } else {
+    const configPath = selection.input ?? '';
+    configSource = configPath;
+
+    if (!existsSync(configPath)) {
+      throw new Error(formatCliError(configNotFoundError(configPath)));
+    }
+
+    const content = await Bun.file(configPath).text();
+
+    try {
+      rawConfig = JSON.parse(content);
+    } catch (e) {
+      throw new Error(
+        formatCliError(
+          configInvalidJsonError(configPath, (e as Error).message),
+        ),
+      );
+    }
   }
 
   const normalized = normalizeConfig(rawConfig);
 
   if (Object.keys(normalized.mcpServers).length === 0) {
     console.error(
-      '[mcpx] Warning: Inline config is empty. Registry defaults remain available.',
+      '[mcpx] Warning: Selected config is empty. Registry defaults remain available.',
     );
   }
 
@@ -303,7 +430,7 @@ export async function loadConfig(
   }
 
   const config: McpServersConfig = substituteEnvVarsInObject(normalized);
-  config._configSource = 'inline';
+  config._configSource = configSource;
 
   return config;
 }
@@ -327,7 +454,15 @@ export async function getServerConfig(
       args: registryServer.recommended.args,
     };
 
-    console.error(`[mcpx] Using registry config in memory for '${serverName}'.`);
+    if (config._configSource && config._configSource !== 'registry') {
+      console.error(
+        `[mcpx] Server '${serverName}' not found in selected config (${config._configSource}). Falling back to registry in memory.`,
+      );
+    } else {
+      console.error(
+        `[mcpx] Using registry config in memory for '${serverName}'.`,
+      );
+    }
     if (registryServer.envVars?.length) {
       console.error(
         `[mcpx] Required env vars: ${registryServer.envVars.join(', ')}`,
@@ -337,7 +472,7 @@ export async function getServerConfig(
       console.error(`[mcpx] Note: ${registryServer.notes}`);
     }
     console.error(
-      '[mcpx] Override with -c/--config inline JSON if you need custom args, env, cwd, headers, or tool filters.',
+      '[mcpx] Override with -c/--config using inline JSON or a config file if you need custom args, env, cwd, headers, or tool filters.',
     );
     return serverConfig;
   }

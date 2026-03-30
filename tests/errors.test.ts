@@ -61,14 +61,14 @@ describe('errors', () => {
       expect(error.type).toBe('CONFIG_NOT_FOUND');
       expect(error.message).toContain('/path/to/config.json');
       expect(error.suggestion).toBeDefined();
-      expect(error.suggestion).toContain('-c/--config');
+      expect(error.suggestion).toContain('MCP_CONFIG_PATH');
     });
 
-    test('configSearchError explains inline-only config', () => {
+    test('configSearchError explains registry-backed default mode', () => {
       const error = configSearchError();
       expect(error.type).toBe('CONFIG_NOT_FOUND');
-      expect(error.details).toContain('inline JSON');
-      expect(error.suggestion).toContain('-c/--config');
+      expect(error.details).toContain('registry-backed in-memory servers');
+      expect(error.suggestion).toContain('MCPX_USE_LOCAL_CONFIG=1');
     });
 
     test('configInvalidJsonError includes parse error', () => {
@@ -104,7 +104,10 @@ describe('errors', () => {
     });
 
     test('serverNotFoundError does not suggest when distance > 2', () => {
-      const error = serverNotFoundError('totally-different', ['github', 'filesystem']);
+      const error = serverNotFoundError('totally-different', [
+        'github',
+        'filesystem',
+      ]);
       expect(error.suggestion).not.toContain('Did you mean');
       expect(error.suggestion).toContain('mcpx registry list');
     });
@@ -116,7 +119,10 @@ describe('errors', () => {
     });
 
     test('serverConnectionError detects command not found', () => {
-      const error = serverConnectionError('github', 'ENOENT: command not found');
+      const error = serverConnectionError(
+        'github',
+        'ENOENT: command not found',
+      );
       expect(error.type).toBe('SERVER_CONNECTION_FAILED');
       expect(error.suggestion).toContain('Command not found');
     });
@@ -160,7 +166,11 @@ describe('errors', () => {
     });
 
     test('toolExecutionError detects missing required fields', () => {
-      const error = toolExecutionError('search', 'github', 'required field missing');
+      const error = toolExecutionError(
+        'search',
+        'github',
+        'required field missing',
+      );
       expect(error.suggestion).toContain('required');
     });
 

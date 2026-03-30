@@ -21,7 +21,9 @@ describe('CLI Integration Tests', () => {
   beforeAll(async () => {
     // Create temp directory for test files
     // NOTE(victor): realpath resolves macOS /var -> /private/var symlink
-    tempDir = await realpath(await mkdtemp(join(tmpdir(), 'mcpx-integration-')));
+    tempDir = await realpath(
+      await mkdtemp(join(tmpdir(), 'mcpx-integration-')),
+    );
 
     // Create a test file to read
     testFilePath = join(tempDir, 'test.txt');
@@ -66,7 +68,7 @@ describe('CLI Integration Tests', () => {
     options: {
       configJson?: string;
       env?: Record<string, string>;
-    } = {}
+    } = {},
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const cliPath = join(import.meta.dir, '..', '..', 'src', 'index.ts');
     const command = ['bun', 'run', cliPath];
@@ -96,7 +98,7 @@ describe('CLI Integration Tests', () => {
 
   // Helper to run CLI commands
   async function runCli(
-    args: string[]
+    args: string[],
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     return runCliCustom(args, { configJson });
   }
@@ -352,7 +354,7 @@ describe('CLI Integration Tests', () => {
         await $`bun run ${cliPath} list -c /nonexistent/config.json`.nothrow();
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr.toString()).toContain('no longer supported');
+      expect(result.stderr.toString()).toContain('Config file not found');
     });
 
     test('handles unknown options', async () => {
@@ -394,7 +396,7 @@ describe('HTTP Transport Integration Tests', () => {
 
   // Helper to run CLI commands with HTTP config
   async function runCli(
-    args: string[]
+    args: string[],
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const cliPath = join(import.meta.dir, '..', '..', 'src', 'index.ts');
 

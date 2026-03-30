@@ -1,4 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
+import { mkdtemp, writeFile, rm, realpath } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   loadConfig,
@@ -22,14 +24,21 @@ const LOCAL_REGISTRY_PATH = join(
 
 describe('config', () => {
   const originalRegistryUrl = process.env.MCPX_REGISTRY_URL;
+  let tempDir: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    tempDir = await realpath(
+      await mkdtemp(join(tmpdir(), 'mcpx-config-test-')),
+    );
     process.env.MCPX_REGISTRY_URL = LOCAL_REGISTRY_PATH;
     clearRegistryCache();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     clearRegistryCache();
+    await rm(tempDir, { recursive: true, force: true });
+    delete process.env.MCP_CONFIG_PATH;
+    delete process.env.MCPX_USE_LOCAL_CONFIG;
     delete process.env.MCP_STRICT_ENV;
     delete process.env.MCP_DISABLED_TOOLS;
     delete process.env.TEST_MCP_TOKEN;
@@ -44,15 +53,103 @@ describe('config', () => {
   });
 
   describe('loadConfig', () => {
-    test('returns empty config when no inline config is provided', async () => {
+    test('returns empty config when no config is provided', async () => {
       const config = await loadConfig(undefined, { allowEmpty: true });
       expect(config.mcpServers).toEqual({});
       expect(config._configSource).toBe('registry');
     });
 
-    test('rejects file path input', async () => {
+    test('ignores local config files unless MCPX_USE_LOCAL_CONFIG is set', async () => {
+      const configPath = join(tempDir, '.mcp.json');
+      const originalCwd = process.cwd();
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          mcpServers: {
+            test: { command: 'echo', args: ['hello'] },
+          },
+        }),
+      );
+
+      process.chdir(tempDir);
+
+      try {
+        const config = await loadConfig(undefined, { allowEmpty: true });
+        expect(config.mcpServers).toEqual({});
+        expect(config._configSource).toBe('registry');
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+
+    test('discovers local config files when MCPX_USE_LOCAL_CONFIG=1', async () => {
+      const configPath = join(tempDir, '.mcp.json');
+      const originalCwd = process.cwd();
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          mcpServers: {
+            test: { command: 'echo', args: ['hello'] },
+          },
+        }),
+      );
+
+      process.env.MCPX_USE_LOCAL_CONFIG = '1';
+      process.chdir(tempDir);
+
+      try {
+        const config = await loadConfig(undefined, { allowEmpty: true });
+        expect(config.mcpServers.test).toBeDefined();
+        expect(config._configSource).toBe(configPath);
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+
+    test('loads valid config from explicit file path', async () => {
+      const configPath = join(tempDir, '.mcp.json');
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          mcpServers: {
+            test: { command: 'echo', args: ['hello'] },
+          },
+        }),
+      );
+
+      const config = await loadConfig(configPath);
+
+      expect(config.mcpServers.test).toBeDefined();
+      expect((config.mcpServers.test as { command: string }).command).toBe(
+        'echo',
+      );
+      expect(config._configSource).toBe(configPath);
+    });
+
+    test('loads config from MCP_CONFIG_PATH', async () => {
+      const configPath = join(tempDir, 'project.mcp.json');
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          mcpServers: {
+            test: { url: 'https://example.com' },
+          },
+        }),
+      );
+
+      process.env.MCP_CONFIG_PATH = configPath;
+
+      const config = await loadConfig();
+
+      expect((config.mcpServers.test as { url: string }).url).toBe(
+        'https://example.com',
+      );
+      expect(config._configSource).toBe(configPath);
+    });
+
+    test('throws on missing config file', async () => {
       await expect(loadConfig('/nonexistent/path.json')).rejects.toThrow(
-        'Config files are no longer supported',
+        'Config file not found',
       );
     });
 
@@ -227,9 +324,9 @@ describe('config', () => {
         }),
       );
 
-      await expect(getServerConfig(config, 'totally-unknown-xyz')).rejects.toThrow(
-        'not found',
-      );
+      await expect(
+        getServerConfig(config, 'totally-unknown-xyz'),
+      ).rejects.toThrow('not found');
     });
 
     test('uses registry defaults when server is not defined inline', async () => {
@@ -406,9 +503,7 @@ describe('config', () => {
         command: 'echo',
         includeTools: ['read_*', 'list_*'],
       };
-      expect(isToolAllowedByServerConfig('read_file', serverConfig)).toBe(
-        true,
-      );
+      expect(isToolAllowedByServerConfig('read_file', serverConfig)).toBe(true);
       expect(isToolAllowedByServerConfig('list_dir', serverConfig)).toBe(true);
       expect(isToolAllowedByServerConfig('write_file', serverConfig)).toBe(
         false,

@@ -271,7 +271,9 @@ export async function startDaemon(
       console.log(`  Socket: ${socketPath}`);
       console.log('  Hint: Use "mcpx daemon status" to see active servers');
     } else {
-      console.log('  Hint: Use "mcpx daemon start <server>" to add a registry-backed server');
+      console.log(
+        '  Hint: Use "mcpx daemon start <server>" to add a registry-backed server',
+      );
     }
     return;
   }
@@ -438,11 +440,9 @@ async function runDaemonServer(): Promise<void> {
             }
             const entry =
               config !== undefined
-                ? await pool.acquire(
-                    serverName,
-                    config,
-                    configSource || 'unknown',
-                  ).then(({ connection }) => ({ connection, config }))
+                ? await pool
+                    .acquire(serverName, config, configSource || 'unknown')
+                    .then(({ connection }) => ({ connection, config }))
                 : pool.get(serverName);
 
             if (!entry) {
@@ -789,9 +789,7 @@ export async function daemonStatus(): Promise<void> {
     console.log(`Socket: ${socketPath}`);
     console.log('');
     console.log('To start the daemon:');
-    console.log(
-      '  mcpx daemon start                  # Start daemon process',
-    );
+    console.log('  mcpx daemon start                  # Start daemon process');
     console.log(
       '  mcpx daemon start <server>         # Start registry-backed server(s)',
     );
