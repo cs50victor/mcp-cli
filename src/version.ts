@@ -2,4 +2,4 @@
  * Version constant - single source of truth
  * This file is auto-updated by scripts/release.sh
  */
-export const VERSION = '0.2.3';
+export const VERSION = '1.0.0';
