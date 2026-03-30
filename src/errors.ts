@@ -36,8 +36,7 @@ export function configNotFoundError(path: string): CliError {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_NOT_FOUND',
     message: `Config file not found: ${path}`,
-    suggestion:
-      'Pass a valid path with -c/--config, or set MCP_CONFIG_PATH to a config file you want to use.',
+    suggestion: 'Pass a valid path with -c/--config.',
   };
 }
 
@@ -46,10 +45,8 @@ export function configSearchError(): CliError {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_NOT_FOUND',
     message: 'No config file selected',
-    details:
-      'mcpx defaults to registry-backed in-memory servers until you pass -c/--config, set MCP_CONFIG_PATH, or enable local discovery with MCPX_USE_LOCAL_CONFIG=1.',
-    suggestion:
-      'Pass -c/--config or MCP_CONFIG_PATH for explicit config, or set MCPX_USE_LOCAL_CONFIG=1 to allow .mcp.json / mcp.json discovery.',
+    details: 'mcpx defaults to registry-backed in-memory servers.',
+    suggestion: 'Pass -c/--config if you intend to use an explicit override.',
   };
 }
 
@@ -88,8 +85,7 @@ export function serverNotFoundError(
     allServers.length > 0 ? allServers.join(', ') : '(none)';
   const sourceInfo = configSource ? ` (from ${configSource})` : '';
 
-  let suggestion =
-    "Run 'mcpx registry list' to see built-in servers, or pass -c/--config with a config file or inline JSON for a custom server.";
+  let suggestion = "Run 'mcpx registry list' to see built-in servers.";
 
   if (allServers.length > 0) {
     const match = closest(serverName, allServers);
@@ -142,7 +138,7 @@ export function serverConnectionError(
     cause.includes('allowed directory')
   ) {
     suggestion =
-      "The registry default likely needs runtime-specific values. Override it with -c/--config using a config file or inline JSON, or inspect the notes with 'mcpx registry get <server>'.";
+      "The registry default likely needs runtime-specific values. Inspect the notes with 'mcpx registry get <server>' and retry with the required values.";
   }
 
   return {

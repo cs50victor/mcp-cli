@@ -53,21 +53,22 @@ describe('config command', () => {
     return { stdout, stderr, exitCode };
   }
 
-  test('shows registry-backed default mode and local discovery disabled by default', async () => {
+  test('shows registry-backed default mode without local config guidance', async () => {
     const result = await runCli(['config']);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain(
       'Default: registry-backed in-memory servers',
     );
-    expect(result.stdout).toContain(
-      'Local config discovery: disabled by default',
-    );
-    expect(result.stdout).toContain('Local config paths');
-    expect(result.stdout).toContain('.mcp.json');
+    expect(result.stdout).toContain('Override: (none)');
+    expect(result.stdout).not.toContain('Local config discovery');
+    expect(result.stdout).not.toContain('Local config paths');
+    expect(result.stdout).not.toContain('.mcp.json');
+    expect(result.stdout).not.toContain('MCP_CONFIG_PATH');
+    expect(result.stdout).not.toContain('MCPX_USE_LOCAL_CONFIG');
   });
 
-  test('shows discovered local config when MCPX_USE_LOCAL_CONFIG=1', async () => {
+  test('shows selected local override without advertising discovery details', async () => {
     const result = await runCli(
       ['config'],
       { MCPX_USE_LOCAL_CONFIG: '1' },
@@ -75,25 +76,22 @@ describe('config command', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Local config discovery: enabled');
-    expect(result.stdout).toContain(`Selected config: ${configPath}`);
-    expect(result.stdout).toContain('discovered from local config paths');
+    expect(result.stdout).toContain(`Override: ${configPath}`);
+    expect(result.stdout).not.toContain('discovered from local config paths');
   });
 
-  test('shows selected config path and marks it active', async () => {
+  test('shows selected config path', async () => {
     const result = await runCli(['config', '-c', configPath]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(`Selected config: ${configPath}`);
-    expect(result.stdout).toContain(`> ${configPath}`);
+    expect(result.stdout).toContain(`Override: ${configPath}`);
   });
 
   test('shows inline JSON mode when selected', async () => {
     const result = await runCli(['config', '-c', '{"mcpServers":{}}']);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Selected config: inline JSON');
-    expect(result.stdout).toContain('-c/--config');
+    expect(result.stdout).toContain('Override: inline JSON');
   });
 
   test('outputs JSON with --json flag', async () => {
@@ -111,7 +109,7 @@ describe('config command', () => {
     const result = await runCli(['config'], { MCP_CONFIG_PATH: configPath });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(configPath);
-    expect(result.stdout).toContain('MCP_CONFIG_PATH');
+    expect(result.stdout).toContain(`Override: ${configPath}`);
+    expect(result.stdout).not.toContain('MCP_CONFIG_PATH');
   });
 });

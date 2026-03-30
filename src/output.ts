@@ -246,7 +246,7 @@ export function formatRegistryServer(server: RegistryServer): string {
   lines.push(`  ${configJson.split('\n').join('\n  ')}`);
   lines.push('');
   lines.push(
-    `${color('Tip:', colors.dim)} mcpx uses this config in memory by default. Pass it with -c/--config only when you need to override args, env, cwd, headers, or tool filters.`,
+    `${color('Tip:', colors.dim)} mcpx uses this config in memory by default.`,
   );
   lines.push('');
 

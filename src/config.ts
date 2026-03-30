@@ -471,9 +471,6 @@ export async function getServerConfig(
     if (registryServer.notes) {
       console.error(`[mcpx] Note: ${registryServer.notes}`);
     }
-    console.error(
-      '[mcpx] Override with -c/--config using inline JSON or a config file if you need custom args, env, cwd, headers, or tool filters.',
-    );
     return serverConfig;
   }
 

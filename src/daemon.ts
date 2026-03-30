@@ -793,9 +793,6 @@ export async function daemonStatus(): Promise<void> {
     console.log(
       '  mcpx daemon start <server>         # Start registry-backed server(s)',
     );
-    console.log(
-      '  mcpx daemon start <server> -c \'{"mcpServers":{...}}\'  # Start with inline override',
-    );
     return;
   }
 

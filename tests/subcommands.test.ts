@@ -45,10 +45,11 @@ describe('subcommand sync', () => {
   });
 
   describe('typos trigger fuzzy matching', () => {
-    test('confg -> config', async () => {
+    test('confg does not leak hidden config command', async () => {
       const result = await $`bun run ${CLI_PATH} confg`.nothrow();
       expect(result.exitCode).toBe(1);
-      expect(result.stderr.toString()).toContain("Did you mean 'config'");
+      expect(result.stderr.toString()).not.toContain("Did you mean 'config'");
+      expect(result.stderr.toString()).toContain('Server "confg" not found');
     });
 
     test('deamon -> daemon', async () => {

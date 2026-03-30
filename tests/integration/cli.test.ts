@@ -109,9 +109,15 @@ describe('CLI Integration Tests', () => {
       const result = await $`bun run ${cliPath} --help`.nothrow();
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout.toString()).toContain('mcpx');
-      expect(result.stdout.toString()).toContain('Usage:');
-      expect(result.stdout.toString()).toContain('Options:');
+      const stdout = result.stdout.toString();
+      expect(stdout).toContain('mcpx');
+      expect(stdout).toContain('Usage:');
+      expect(stdout).toContain('Options:');
+      expect(stdout).not.toContain('mcpx [options] config');
+      expect(stdout).not.toContain('-c, --config');
+      expect(stdout).not.toContain('MCP_CONFIG_PATH');
+      expect(stdout).not.toContain('MCPX_USE_LOCAL_CONFIG');
+      expect(stdout).not.toContain('.mcp.json');
     });
   });
 

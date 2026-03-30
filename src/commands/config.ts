@@ -6,49 +6,15 @@ export interface ConfigOptions {
 }
 
 function formatTextOutput(result: ConfigPathsResult): string {
-  const lines: string[] = [];
-
-  lines.push('Default: registry-backed in-memory servers');
-  lines.push(
-    result.localDiscoveryEnabled
-      ? 'Local config discovery: enabled via MCPX_USE_LOCAL_CONFIG'
-      : 'Local config discovery: disabled by default (set MCPX_USE_LOCAL_CONFIG=1 to enable)',
-  );
+  const lines = ['Default: registry-backed in-memory servers'];
 
   if (result.mode === 'inline') {
-    const source =
-      result.activeSource === 'env' ? 'MCP_CONFIG_PATH' : '-c/--config';
-    lines.push(`Selected config: inline JSON (from ${source})`);
+    lines.push('Override: inline JSON');
   } else if (result.active) {
-    lines.push(`Selected config: ${result.active}`);
-    if (result.activeSource === 'cli') {
-      lines.push('                 (from -c/--config flag)');
-    } else if (result.activeSource === 'env') {
-      lines.push('                 (from MCP_CONFIG_PATH)');
-    } else if (result.activeSource === 'local') {
-      lines.push('                 (discovered from local config paths)');
-    }
+    lines.push(`Override: ${result.active}`);
   } else {
-    lines.push('Selected config: (none)');
+    lines.push('Override: (none)');
   }
-
-  lines.push('');
-  lines.push('Local config paths:');
-
-  for (const info of result.searchPaths) {
-    const marker = info.active ? '>' : info.exists ? 'o' : 'x';
-    lines.push(`  ${marker} ${info.path}`);
-  }
-
-  if (result.envVar) {
-    lines.push('');
-    lines.push(`MCP_CONFIG_PATH=${result.envVar}`);
-  }
-
-  lines.push('');
-  lines.push(
-    "Tip: Registry/in-memory stays the default. Use -c '<path-or-json>' or MCP_CONFIG_PATH for explicit config, or set MCPX_USE_LOCAL_CONFIG=1 to enable local .mcp.json / mcp.json discovery.",
-  );
 
   return lines.join('\n');
 }

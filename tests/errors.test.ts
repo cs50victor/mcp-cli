@@ -61,14 +61,16 @@ describe('errors', () => {
       expect(error.type).toBe('CONFIG_NOT_FOUND');
       expect(error.message).toContain('/path/to/config.json');
       expect(error.suggestion).toBeDefined();
-      expect(error.suggestion).toContain('MCP_CONFIG_PATH');
+      expect(error.suggestion).toContain('-c/--config');
+      expect(error.suggestion).not.toContain('MCP_CONFIG_PATH');
     });
 
     test('configSearchError explains registry-backed default mode', () => {
       const error = configSearchError();
       expect(error.type).toBe('CONFIG_NOT_FOUND');
       expect(error.details).toContain('registry-backed in-memory servers');
-      expect(error.suggestion).toContain('MCPX_USE_LOCAL_CONFIG=1');
+      expect(error.suggestion).toContain('-c/--config');
+      expect(error.suggestion).not.toContain('MCPX_USE_LOCAL_CONFIG=1');
     });
 
     test('configInvalidJsonError includes parse error', () => {

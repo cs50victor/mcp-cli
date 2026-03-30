@@ -40,6 +40,14 @@ const SUBCOMMANDS = [
   'registry',
 ] as const;
 
+const VISIBLE_SUBCOMMANDS = [
+  'daemon',
+  'grep',
+  'list',
+  'ls',
+  'registry',
+] as const;
+
 interface ParsedArgs {
   command:
     | 'list'
@@ -178,7 +186,7 @@ function parseArgs(args: string[]): ParsedArgs {
   } else {
     // Check for typos in subcommands before treating as server name
     const input = positional[0];
-    const match = closest(input, SUBCOMMANDS as unknown as string[]);
+    const match = closest(input, VISIBLE_SUBCOMMANDS as unknown as string[]);
     const dist = distance(input, match);
     if (dist > 0 && dist <= 2) {
       console.error(`Unknown command: '${input}'. Did you mean '${match}'?`);
@@ -201,7 +209,6 @@ Usage:
   mcpx                                     List available servers and tools
   mcpx list                                List available servers and tools
   mcpx ls                                  Alias for list
-  mcpx [options] config                    Show config usage and local discovery status
   mcpx [options] grep <pattern>            Search available tools by glob pattern
   mcpx [options] <server>                  Show server tools and parameters
   mcpx [options] <server>/<tool>           Show tool schema and description
@@ -216,15 +223,12 @@ Options:
   -v, --version            Show version number
   -j, --json               Output as JSON (for scripting)
   -d, --with-descriptions  Include tool descriptions
-  -c, --config <path|json> Config file path or inline JSON override
 
 Output:
   stdout                   Tool results and data (default: text, --json for JSON)
   stderr                   Errors and diagnostics
 
 Environment Variables:
-  MCP_CONFIG_PATH          Config file path or inline JSON (alternative to -c)
-  MCPX_USE_LOCAL_CONFIG    Set to "1" to enable .mcp.json / mcp.json discovery
   MCP_DEBUG                Enable debug output
   MCP_TIMEOUT              Request timeout in seconds (default: ${DEFAULT_TIMEOUT_SECONDS})
   MCP_CONCURRENCY          Max parallel server connections (default: ${DEFAULT_CONCURRENCY})
@@ -238,18 +242,11 @@ Environment Variables:
 Examples:
   mcpx                                    # List available servers
   mcpx -d                                 # List with descriptions
-  mcpx config                             # Show default mode + common config paths
   mcpx grep "*file*"                      # Search for file tools
+  mcpx memory                             # Recommended default for agent memory
   mcpx time                               # Show server tools
   mcpx time/get_current_time              # Show tool schema
   echo '{"path":"./file"}' | mcpx server/tool -        # Read JSON from stdin
-
-  # Explicit config file or inline override:
-  mcpx -c ~/.mcp.json filesystem/read_file '{"path":"./README.md"}'
-  mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' filesystem/read_file '{"path":"./README.md"}'
-
-  # Optional local config discovery for agent shells:
-  MCPX_USE_LOCAL_CONFIG=1 mcpx config
 
 Registry (discover MCP servers):
   mcpx registry                           # Show registry help
@@ -261,7 +258,6 @@ Registry (discover MCP servers):
 Daemon Mode (persistent connections for stateful servers):
   mcpx daemon start                          # Start daemon process
   mcpx daemon start <server...>              # Start registry-backed server(s)
-  mcpx daemon start filesystem -c '{...}'    # Start with inline override
   mcpx daemon stop                           # Stop daemon entirely
   mcpx daemon stop <server>                  # Stop specific server, keep daemon
   mcpx daemon stop --force                   # Force stop (bypasses >1 connection check)
@@ -275,14 +271,8 @@ Daemon Mode (persistent connections for stateful servers):
                'mcpx server/tool' reuses that persistent connection.
 
 Default Resolution:
-  Without -c/--config, mcpx resolves servers from the registry and invokes them in memory.
+  mcpx resolves servers from the registry and invokes them in memory.
   For agents, the memory server is the default recommendation for cross-session memory.
-  Local .mcp.json / mcp.json discovery is disabled unless MCPX_USE_LOCAL_CONFIG=1.
-  Use -c/--config or MCP_CONFIG_PATH when you need explicit config, or enable MCPX_USE_LOCAL_CONFIG for local file discovery.
-
-Config Formats:
-  Flat:    {"server": {"command": "...", "args": [...]}}
-  Wrapped: {"mcpServers": {"server": {"command": "..."}}}
 `);
 }
 

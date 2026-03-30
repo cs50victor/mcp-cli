@@ -183,9 +183,7 @@ export async function grepCommand(options: GrepOptions): Promise<void> {
 
   if (serverNames.length === 0) {
     console.error('Warning: Selected config does not define any servers.');
-    console.error(
-      `Tip: Run 'mcpx registry list' for built-in servers, or pass -c '{"server":{"command":"..."}}' or -c /path/to/.mcp.json for a custom server.`,
-    );
+    console.error(`Tip: Run 'mcpx registry list' for built-in servers.`);
     return;
   }
 

@@ -47,7 +47,7 @@ bun install -g github:cs50victor/mcpx
 
 ## Quick Start
 
-mcpx resolves servers from the built-in registry and invokes them in memory by default. For agents, `memory` is the default recommendation and is highly recommended for cross-session memory. Local `.mcp.json` / `mcp.json` discovery is disabled unless `MCPX_USE_LOCAL_CONFIG=1`. Explicit config still works via `-c /path/to/.mcp.json` or `MCP_CONFIG_PATH`.
+mcpx resolves servers from the built-in registry and invokes them in memory by default. For agents, `memory` is the default recommendation and is highly recommended for cross-session memory.
 
 **1. Discover available servers**
 
@@ -67,18 +67,7 @@ mcpx time
 mcpx time/get_current_time
 ```
 
-**3. Use explicit config only when needed**
-
-Some servers need runtime-specific values such as filesystem paths, repository paths, headers, or tool filters. Pass them explicitly with `-c`, or enable local file discovery only for shells where you want that behavior:
-
-```bash
-mcpx -c ~/.mcp.json filesystem/read_file '{"path":"./README.md"}'
-mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' \
-  filesystem/read_file '{"path":"./README.md"}'
-MCPX_USE_LOCAL_CONFIG=1 mcpx config
-```
-
-**4. Use daemon mode for stateful servers**
+**3. Use daemon mode for stateful servers**
 
 ```bash
 mcpx daemon start playwright
@@ -86,7 +75,7 @@ mcpx playwright/browser_navigate '{"url":"https://example.com"}'
 mcpx daemon stop playwright
 ```
 
-Your agent now accesses MCP tools without loading schemas upfront, while still allowing config files when you explicitly opt into them.
+Your agent now accesses MCP tools without loading schemas upfront.
 
 ## Agent Integration
 
@@ -106,7 +95,6 @@ mcpx grep <pattern>               Search registry tool names (glob pattern)
 mcpx <server>                     Show live server tools and parameters
 mcpx <server>/<tool>              Show live tool JSON schema
 mcpx <server>/<tool> <json>       Call tool with arguments
-mcpx config                       Show default mode and local config discovery status
 mcpx daemon <start|stop|status>   Manage persistent connections
 mcpx registry list                List built-in registry servers
 mcpx registry get <name>          Show registry metadata and default config
@@ -116,49 +104,11 @@ mcpx registry get <name>          Show registry metadata and default config
 |------|--------|
 | `-d` | Include descriptions |
 | `-j` | JSON output |
-| `-c <path\|json>` | Config file path or inline config override |
-
-## Config Overrides
-
-Without `-c`, `MCP_CONFIG_PATH`, or `MCPX_USE_LOCAL_CONFIG=1`, mcpx stays registry-backed and in-memory by default.
-
-`-c` / `--config` and `MCP_CONFIG_PATH` accept either:
-
-- A config file path such as `~/.mcp.json`
-- Inline JSON in flat or wrapped format
-
-To opt into local `.mcp.json` / `mcp.json` discovery, set `MCPX_USE_LOCAL_CONFIG=1`.
-
-Supported formats:
-
-```json
-{
-  "filesystem": {
-    "command": "bunx",
-    "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-  }
-}
-```
-
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "bunx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-    }
-  }
-}
-```
-
-Overrides can also set `env`, `cwd`, `headers`, `includeTools`, `allowedTools`, and `disabledTools`.
 
 ## Environment
 
 Useful environment variables:
 
-- `MCP_CONFIG_PATH`
-- `MCPX_USE_LOCAL_CONFIG`
 - `MCP_TIMEOUT`
 - `MCP_CONCURRENCY`
 - `MCP_MAX_RETRIES`

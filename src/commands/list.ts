@@ -158,9 +158,7 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
         options.withDescriptions,
       ),
     );
-    console.log(
-      "\nTip: Run 'mcpx <server>' to inspect a server live, or pass -c '<path-or-json>' to use a config file or override the registry config in memory.",
-    );
+    console.log("\nTip: Run 'mcpx <server>' to inspect a server live.");
   }
 }
 
@@ -183,9 +181,7 @@ export async function listCommand(options: ListOptions): Promise<void> {
 
   if (serverNames.length === 0) {
     console.error('Warning: Selected config does not define any servers.');
-    console.error(
-      `Tip: Run 'mcpx registry list' for built-in servers, or pass -c '{"server":{"command":"..."}}' or -c /path/to/.mcp.json for a custom server.`,
-    );
+    console.error(`Tip: Run 'mcpx registry list' for built-in servers.`);
     return;
   }
 
@@ -243,8 +239,6 @@ export async function listCommand(options: ListOptions): Promise<void> {
     console.log(formatJson(jsonOutput));
   } else {
     console.log(formatServerList(displayServers, options.withDescriptions));
-    console.log(
-      "\nTip: Run 'mcpx registry list' for built-in servers, or use -c '<path-or-json>' to inspect custom servers live.",
-    );
+    console.log("\nTip: Run 'mcpx registry list' for built-in servers.");
   }
 }

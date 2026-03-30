@@ -19,7 +19,6 @@ mcpx <server>/<tool> '<json>'     # Call tool with JSON arguments
 ```
 
 Add `-d` to include descriptions (e.g., `mcpx -d`, `mcpx github -d`).
-Use `-c '<path-or-json>'` only when a server needs a custom command, args, env, cwd, headers, or tool filters.
 
 ### Workflow
 
@@ -46,10 +45,6 @@ Without daemon mode, each call starts a fresh server process, losing prior state
 ```bash
 # Inspect the schema first
 mcpx time/get_current_time
-
-# Inline override for runtime-specific servers
-mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' \
-  filesystem/read_file '{"path":"./README.md"}'
 
 # From stdin (for complex JSON with quotes)
 mcpx server/tool - <<EOF
