@@ -9,21 +9,23 @@ import {
 import {
   type McpServersConfig,
   findDisabledMatch,
+  getConfigSelection,
   getServerConfig,
   isToolAllowedByServerConfig,
   listServerNames,
   loadConfig,
   loadDisabledTools,
 } from '../config.js';
-import { ErrorCode } from '../errors.js';
+import { ErrorCode, formatCliError, registryFetchError } from '../errors.js';
 import { globToRegex } from '../glob.js';
 import { formatJson, formatSearchResults } from '../output.js';
+import { type Registry, fetchRegistry, getRegistryUrl } from '../registry.js';
 
 export interface GrepOptions {
   pattern: string;
   withDescriptions: boolean;
   json: boolean;
-  configPath?: string;
+  configInput?: string;
 }
 
 interface SearchResult {
@@ -105,11 +107,72 @@ async function searchServerTools(
   }
 }
 
+async function grepRegistry(options: GrepOptions): Promise<void> {
+  let registry: Registry;
+  try {
+    registry = await fetchRegistry();
+  } catch (error) {
+    console.error(
+      formatCliError(
+        registryFetchError(getRegistryUrl(), (error as Error).message),
+      ),
+    );
+    process.exit(ErrorCode.NETWORK_ERROR);
+  }
+
+  const pattern = globToRegex(options.pattern);
+  const disabledPatterns = await loadDisabledTools();
+
+  const results: SearchResult[] = [];
+  for (const server of registry.servers) {
+    for (const toolName of server.tools) {
+      const fullPath = `${server.name}/${toolName}`;
+      if (findDisabledMatch(fullPath, disabledPatterns)) {
+        continue;
+      }
+      if (pattern.test(toolName) || pattern.test(fullPath)) {
+        results.push({
+          server: server.name,
+          tool: {
+            name: toolName,
+            description: undefined,
+            inputSchema: {},
+          },
+        });
+      }
+    }
+  }
+
+  if (results.length === 0) {
+    console.log(`No tools found matching "${options.pattern}"`);
+    return;
+  }
+
+  if (options.json) {
+    console.log(
+      formatJson(
+        results.map((result) => ({
+          server: result.server,
+          tool: result.tool.name,
+          source: 'registry',
+        })),
+      ),
+    );
+  } else {
+    console.log(formatSearchResults(results, options.withDescriptions));
+  }
+}
+
 export async function grepCommand(options: GrepOptions): Promise<void> {
+  if (getConfigSelection(options.configInput).mode === 'registry') {
+    await grepRegistry(options);
+    return;
+  }
+
   let config: McpServersConfig;
 
   try {
-    config = await loadConfig(options.configPath, { allowEmpty: true });
+    config = await loadConfig(options.configInput, { allowEmpty: true });
   } catch (error) {
     console.error((error as Error).message);
     process.exit(ErrorCode.CLIENT_ERROR);
@@ -119,10 +182,8 @@ export async function grepCommand(options: GrepOptions): Promise<void> {
   const serverNames = listServerNames(config);
 
   if (serverNames.length === 0) {
-    console.error('Warning: No servers configured. Add servers to .mcp.json');
-    console.error(
-      "Tip: If the MCP server you need is not configured locally, run 'mcpx registry list' to discover remote servers.",
-    );
+    console.error('Warning: Selected config does not define any servers.');
+    console.error(`Tip: Run 'mcpx registry list' for built-in servers.`);
     return;
   }
 

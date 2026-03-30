@@ -61,13 +61,16 @@ describe('errors', () => {
       expect(error.type).toBe('CONFIG_NOT_FOUND');
       expect(error.message).toContain('/path/to/config.json');
       expect(error.suggestion).toBeDefined();
+      expect(error.suggestion).toContain('-c/--config');
+      expect(error.suggestion).not.toContain('MCP_CONFIG_PATH');
     });
 
-    test('configSearchError lists search paths', () => {
+    test('configSearchError explains registry-backed default mode', () => {
       const error = configSearchError();
       expect(error.type).toBe('CONFIG_NOT_FOUND');
-      expect(error.details).toContain('Searched:');
-      expect(error.suggestion).toContain('.mcp.json');
+      expect(error.details).toContain('registry-backed in-memory servers');
+      expect(error.suggestion).toContain('-c/--config');
+      expect(error.suggestion).not.toContain('MCPX_USE_LOCAL_CONFIG=1');
     });
 
     test('configInvalidJsonError includes parse error', () => {
@@ -76,10 +79,10 @@ describe('errors', () => {
       expect(error.details).toContain('Unexpected token');
     });
 
-    test('configMissingFieldError mentions mcpServers', () => {
+    test('configMissingFieldError mentions config input', () => {
       const error = configMissingFieldError('/config.json');
       expect(error.type).toBe('CONFIG_MISSING_FIELD');
-      expect(error.message).toContain('mcpServers');
+      expect(error.message).toContain('Config input');
     });
   });
 
@@ -103,7 +106,10 @@ describe('errors', () => {
     });
 
     test('serverNotFoundError does not suggest when distance > 2', () => {
-      const error = serverNotFoundError('totally-different', ['github', 'filesystem']);
+      const error = serverNotFoundError('totally-different', [
+        'github',
+        'filesystem',
+      ]);
       expect(error.suggestion).not.toContain('Did you mean');
       expect(error.suggestion).toContain('mcpx registry list');
     });
@@ -115,7 +121,10 @@ describe('errors', () => {
     });
 
     test('serverConnectionError detects command not found', () => {
-      const error = serverConnectionError('github', 'ENOENT: command not found');
+      const error = serverConnectionError(
+        'github',
+        'ENOENT: command not found',
+      );
       expect(error.type).toBe('SERVER_CONNECTION_FAILED');
       expect(error.suggestion).toContain('Command not found');
     });
@@ -159,7 +168,11 @@ describe('errors', () => {
     });
 
     test('toolExecutionError detects missing required fields', () => {
-      const error = toolExecutionError('search', 'github', 'required field missing');
+      const error = toolExecutionError(
+        'search',
+        'github',
+        'required field missing',
+      );
       expect(error.suggestion).toContain('required');
     });
 

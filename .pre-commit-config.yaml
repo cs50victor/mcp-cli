@@ -1,0 +1,21 @@
+minimum_pre_commit_version: 4.4.0
+
+repos:
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: typecheck
+        entry: bun run typecheck
+        language: unsupported
+        files: ''
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: lint
+        name: lint
+        entry: bun run lint
+        language: unsupported
+        files: ''
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

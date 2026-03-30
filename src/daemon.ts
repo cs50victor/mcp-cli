@@ -6,8 +6,8 @@
  * started in daemon mode - regular `mcpx server/tool` calls are ephemeral.
  *
  * Usage:
- *   mcpx daemon start                  # Start daemon + all servers from config
- *   mcpx daemon start <server...>      # Start daemon + specific server(s)
+ *   mcpx daemon start                  # Start daemon process
+ *   mcpx daemon start <server...>      # Start registry-backed server(s)
  *   mcpx daemon stop                   # Stop daemon entirely
  *   mcpx daemon stop <server>          # Stop specific server, keep daemon running
  *   mcpx daemon status                 # Show daemon status and active servers
@@ -28,7 +28,9 @@ import {
   type ServerConfig,
   computeConfigHash,
   debug,
+  getServerConfig,
   isHttpServer,
+  isToolAllowedByServerConfig,
 } from './config.js';
 
 const DEFAULT_SOCKET_PATH = join(homedir(), '.mcp-cli', 'daemon.sock');
@@ -124,6 +126,14 @@ class ConnectionPool {
 
   has(serverName: string): boolean {
     return this.pool.has(serverName);
+  }
+
+  get(serverName: string): PoolEntry | undefined {
+    const entry = this.pool.get(serverName);
+    if (entry) {
+      entry.lastUsed = Date.now();
+    }
+    return entry;
   }
 
   async release(serverName: string): Promise<boolean> {
@@ -235,6 +245,7 @@ export async function startDaemon(
 
     const spawnArgs = getDaemonSpawnArgs(process.argv[1], process.execPath);
     const proc = Bun.spawn(spawnArgs, {
+      detached: true,
       env: { ...process.env, _MCPX_DAEMON: '1' },
       stdio: ['ignore', 'ignore', 'ignore'],
     });
@@ -259,41 +270,59 @@ export async function startDaemon(
       console.log('Daemon is already running');
       console.log(`  Socket: ${socketPath}`);
       console.log('  Hint: Use "mcpx daemon status" to see active servers');
+    } else {
+      console.log(
+        '  Hint: Use "mcpx daemon start <server>" to add a registry-backed server',
+      );
     }
     return;
   }
 
-  const configSource = config._configSource || 'inline';
-  const allServerNames = Object.keys(config.mcpServers);
+  const inlineServerNames = Object.keys(config.mcpServers);
   const toStart =
-    serverNames && serverNames.length > 0 ? serverNames : allServerNames;
+    serverNames && serverNames.length > 0 ? serverNames : inlineServerNames;
 
-  const invalid = toStart.filter((name) => !config.mcpServers[name]);
-  if (invalid.length > 0) {
-    console.error(
-      `Error: Server(s) not found in config: ${invalid.join(', ')}`,
-    );
-    console.error(`  Available servers: ${allServerNames.join(', ')}`);
-    console.error(`  Config: ${configSource}`);
-    process.exit(1);
+  if (toStart.length === 0) {
+    if (daemonWasRunning) {
+      console.log('Daemon is already running');
+      console.log(`  Socket: ${socketPath}`);
+      console.log('  Hint: Use "mcpx daemon start <server>" to add a server');
+    } else {
+      console.log('  Hint: Use "mcpx daemon start <server>" to add a server');
+    }
+    return;
   }
 
-  const started: string[] = [];
-  const alreadyRunning: string[] = [];
+  const started: Array<{
+    name: string;
+    transport: 'stdio' | 'http';
+    source: string;
+  }> = [];
+  const alreadyRunning: Array<{
+    name: string;
+    source: string;
+  }> = [];
   const failed: Array<{ name: string; error: string }> = [];
 
   for (const name of toStart) {
     try {
-      const serverConfig = config.mcpServers[name];
+      const serverConfig = await getServerConfig(config, name);
+      const configSource = config.mcpServers[name]
+        ? config._configSource || 'inline'
+        : 'registry';
       const { alreadyConnected } = await connectServerToDaemon(
         name,
         serverConfig,
         configSource,
       );
       if (alreadyConnected) {
-        alreadyRunning.push(name);
+        alreadyRunning.push({ name, source: configSource });
       } else {
-        started.push(name);
+        started.push({
+          name,
+          transport: getTransportType(serverConfig),
+          source: configSource,
+        });
       }
     } catch (err) {
       failed.push({
@@ -313,20 +342,17 @@ export async function startDaemon(
     return;
   }
 
-  console.log(`Config: ${configSource}`);
-
   if (started.length > 0) {
     console.log('Started:');
-    for (const name of started) {
-      const transport = getTransportType(config.mcpServers[name]);
-      console.log(`  + ${name} (${transport})`);
+    for (const server of started) {
+      console.log(`  + ${server.name} (${server.transport}, ${server.source})`);
     }
   }
 
   if (alreadyRunning.length > 0) {
     console.log('Already running:');
-    for (const name of alreadyRunning) {
-      console.log(`  = ${name}`);
+    for (const server of alreadyRunning) {
+      console.log(`  = ${server.name} (${server.source})`);
     }
   }
 
@@ -342,7 +368,7 @@ export async function startDaemon(
     console.log(
       'Hint: Tool calls to these servers now use persistent connections.',
     );
-    console.log(`  Example: mcpx ${started[0]}/<tool> '{...}'`);
+    console.log(`  Example: mcpx ${started[0].name}/<tool> '{...}'`);
   }
 }
 
@@ -406,18 +432,38 @@ async function runDaemonServer(): Promise<void> {
               tool,
               args,
             } = request.params ?? {};
-            if (!serverName || !config || !tool) {
+            if (!serverName || !tool) {
               return Response.json(
-                { error: 'missing server, config, or tool' } as DaemonResponse,
+                { error: 'missing server or tool' } as DaemonResponse,
                 { status: 400 },
               );
             }
-            const { connection } = await pool.acquire(
-              serverName,
-              config,
-              configSource || 'unknown',
-            );
-            const result = await connection.client.callTool({
+            const entry =
+              config !== undefined
+                ? await pool
+                    .acquire(serverName, config, configSource || 'unknown')
+                    .then(({ connection }) => ({ connection, config }))
+                : pool.get(serverName);
+
+            if (!entry) {
+              return Response.json(
+                {
+                  error:
+                    'server is not connected in daemon and no config was provided',
+                } as DaemonResponse,
+                { status: 400 },
+              );
+            }
+
+            if (!isToolAllowedByServerConfig(tool, entry.config)) {
+              return Response.json(
+                {
+                  error: `tool "${tool}" is disabled by server config`,
+                } as DaemonResponse,
+                { status: 403 },
+              );
+            }
+            const result = await entry.connection.client.callTool({
               name: tool,
               arguments: args ?? {},
             });
@@ -595,8 +641,8 @@ export async function disconnectServerFromDaemon(
 
 export async function callViaDaemon(
   serverName: string,
-  config: ServerConfig,
-  configSource: string,
+  config: ServerConfig | undefined,
+  configSource: string | undefined,
   toolName: string,
   args: Record<string, unknown>,
 ): Promise<unknown> {
@@ -743,14 +789,9 @@ export async function daemonStatus(): Promise<void> {
     console.log(`Socket: ${socketPath}`);
     console.log('');
     console.log('To start the daemon:');
+    console.log('  mcpx daemon start                  # Start daemon process');
     console.log(
-      '  mcpx daemon start                  # Start with all servers from config',
-    );
-    console.log(
-      '  mcpx daemon start <server>         # Start with specific server(s)',
-    );
-    console.log(
-      '  mcpx daemon start -c \'{"mcpServers":{...}}\'  # Start with inline config',
+      '  mcpx daemon start <server>         # Start registry-backed server(s)',
     );
     return;
   }
@@ -781,6 +822,9 @@ export async function daemonStatus(): Promise<void> {
     console.log('');
     console.log('No servers currently connected.');
     console.log('To add a server: mcpx daemon start <server>');
+    console.log(
+      'For runtime-specific servers: mcpx daemon start <server> -c \'{"mcpServers":{...}}\'',
+    );
   }
 }
 

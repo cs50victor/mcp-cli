@@ -2,40 +2,18 @@ import { type ConfigPathsResult, getConfigPaths } from '../config.js';
 
 export interface ConfigOptions {
   json: boolean;
-  configPath?: string;
+  configInput?: string;
 }
 
 function formatTextOutput(result: ConfigPathsResult): string {
-  const lines: string[] = [];
+  const lines = ['Default: registry-backed in-memory servers'];
 
-  if (result.active) {
-    lines.push(`Active: ${result.active}`);
-    if (result.activeSource === 'cli') {
-      lines.push('        (from -c/--config flag)');
-    } else if (result.activeSource === 'env') {
-      lines.push('        (from MCP_CONFIG_PATH)');
-    }
+  if (result.mode === 'inline') {
+    lines.push('Override: inline JSON');
+  } else if (result.active) {
+    lines.push(`Override: ${result.active}`);
   } else {
-    lines.push('Active: (none found)');
-  }
-
-  lines.push('');
-  lines.push('Search paths:');
-
-  for (const info of result.searchPaths) {
-    const marker = info.active ? '>' : info.exists ? 'o' : 'x';
-    let label = '';
-    if (info.source === 'cli') {
-      label = ' (--config)';
-    } else if (info.source === 'env') {
-      label = ' (MCP_CONFIG_PATH)';
-    }
-    lines.push(`  ${marker} ${info.path}${label}`);
-  }
-
-  if (result.envVar) {
-    lines.push('');
-    lines.push(`MCP_CONFIG_PATH=${result.envVar}`);
+    lines.push('Override: (none)');
   }
 
   return lines.join('\n');
@@ -46,7 +24,7 @@ function formatJsonOutput(result: ConfigPathsResult): string {
 }
 
 export async function configCommand(options: ConfigOptions): Promise<void> {
-  const result = getConfigPaths(options.configPath);
+  const result = getConfigPaths(options.configInput);
 
   if (options.json) {
     console.log(formatJsonOutput(result));

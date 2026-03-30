@@ -2,11 +2,9 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  type CliError,
   ErrorCode,
   configInvalidJsonError,
   configNotFoundError,
-  configSearchError,
   formatCliError,
   serverNotFoundError,
 } from './errors.js';
@@ -166,49 +164,6 @@ function substituteEnvVarsInObject<T>(obj: T): T {
   return obj;
 }
 
-function getDefaultConfigPaths(): string[] {
-  const paths: string[] = [];
-  const home = homedir();
-
-  paths.push(resolve('./.mcp.json'));
-  paths.push(resolve('./mcp.json'));
-  paths.push(join(home, '.mcp.json'));
-  paths.push(join(home, '.config', 'mcp', 'mcp.json'));
-
-  return paths;
-}
-
-function getLegacyConfigPaths(): string[] {
-  const paths: string[] = [];
-  const home = homedir();
-
-  paths.push(resolve('./mcp_servers.json'));
-  paths.push(join(home, '.mcp_servers.json'));
-  paths.push(join(home, '.config', 'mcp', 'mcp_servers.json'));
-
-  return paths;
-}
-
-function checkForLegacyConfig(): string | undefined {
-  for (const path of getLegacyConfigPaths()) {
-    if (existsSync(path)) {
-      return path;
-    }
-  }
-  return undefined;
-}
-
-export function legacyConfigError(legacyPath: string): CliError {
-  return {
-    code: ErrorCode.CLIENT_ERROR,
-    type: 'CONFIG_LEGACY_FILENAME',
-    message: `"mcp_servers.json" filename is no longer supported (deprecated in v0.2.0)`,
-    details: `Found: ${legacyPath}`,
-    suggestion:
-      'Rename your config file:\n  mv mcp_servers.json .mcp.json\n\nSupported filenames: .mcp.json, mcp.json\nSee: https://github.com/cs50victor/mcpx#config-format',
-  };
-}
-
 function isWrappedFormat(
   config: unknown,
 ): config is { mcpServers: Record<string, unknown> } {
@@ -249,56 +204,113 @@ function normalizeConfig(rawConfig: unknown): {
   return { mcpServers: {} };
 }
 
-export interface ConfigPathInfo {
-  path: string;
-  exists: boolean;
-  active: boolean;
-  source?: 'cli' | 'env' | 'search';
-}
+function getDefaultConfigPaths(): string[] {
+  const home = homedir();
 
-export interface ConfigPathsResult {
-  active: string | null;
-  activeSource: 'cli' | 'env' | 'search' | null;
-  searchPaths: ConfigPathInfo[];
-  envVar: string | undefined;
-}
-
-export function getConfigPaths(explicitPath?: string): ConfigPathsResult {
-  const envPath = process.env.MCP_CONFIG_PATH;
-
-  type Source = 'cli' | 'env' | 'search';
-  const candidates: Array<{ path: string; source: Source }> = [];
-
-  if (explicitPath)
-    candidates.push({ path: resolve(explicitPath), source: 'cli' });
-  if (envPath) candidates.push({ path: resolve(envPath), source: 'env' });
-  for (const p of getDefaultConfigPaths())
-    candidates.push({ path: p, source: 'search' });
-
-  const seen = new Set<string>();
-  const pathInfos: ConfigPathInfo[] = [];
-  let active: string | null = null;
-  let activeSource: Source | null = null;
-
-  for (const { path, source } of candidates) {
-    if (seen.has(path)) continue;
-    seen.add(path);
-
-    const exists = existsSync(path);
-    const isActive = exists && active === null;
-    if (isActive) {
-      active = path;
-      activeSource = source;
-    }
-
-    pathInfos.push({ path, exists, active: isActive, source });
-  }
-
-  return { active, activeSource, searchPaths: pathInfos, envVar: envPath };
+  return [
+    resolve('./.mcp.json'),
+    resolve('./mcp.json'),
+    join(home, '.mcp.json'),
+    join(home, '.config', 'mcp', 'mcp.json'),
+  ];
 }
 
 function isInlineJson(value: string): boolean {
   return value.trimStart().startsWith('{');
+}
+
+function isLocalConfigDiscoveryEnabled(): boolean {
+  const value = process.env.MCPX_USE_LOCAL_CONFIG?.toLowerCase();
+  return value === '1' || value === 'true';
+}
+
+function findDiscoveredConfigPath(): string | undefined {
+  return getDefaultConfigPaths().find((path) => existsSync(path));
+}
+
+export interface ConfigSelection {
+  mode: 'registry' | 'inline' | 'file';
+  input?: string;
+  source?: 'cli' | 'env' | 'local';
+}
+
+export function getConfigSelection(explicitInput?: string): ConfigSelection {
+  const envValue = process.env.MCP_CONFIG_PATH;
+
+  if (explicitInput) {
+    if (isInlineJson(explicitInput)) {
+      return { mode: 'inline', input: explicitInput, source: 'cli' };
+    }
+
+    return { mode: 'file', input: resolve(explicitInput), source: 'cli' };
+  }
+
+  if (envValue) {
+    if (isInlineJson(envValue)) {
+      return { mode: 'inline', input: envValue, source: 'env' };
+    }
+
+    return { mode: 'file', input: resolve(envValue), source: 'env' };
+  }
+
+  if (isLocalConfigDiscoveryEnabled()) {
+    const discoveredPath = findDiscoveredConfigPath();
+
+    if (discoveredPath) {
+      return { mode: 'file', input: discoveredPath, source: 'local' };
+    }
+  }
+
+  return { mode: 'registry' };
+}
+
+export interface ConfigPathInfo {
+  path: string;
+  exists: boolean;
+  active: boolean;
+  source?: 'cli' | 'env' | 'local' | 'default';
+}
+
+export interface ConfigPathsResult {
+  mode: 'registry' | 'inline' | 'file';
+  active: string | null;
+  activeSource: 'cli' | 'env' | 'local' | null;
+  localDiscoveryEnabled: boolean;
+  searchPaths: ConfigPathInfo[];
+  envVar: string | undefined;
+}
+
+export function getConfigPaths(explicitInput?: string): ConfigPathsResult {
+  const envValue = process.env.MCP_CONFIG_PATH;
+  const localDiscoveryEnabled = isLocalConfigDiscoveryEnabled();
+  const selection = getConfigSelection(explicitInput);
+  const active = selection.mode === 'file' ? (selection.input ?? null) : null;
+  const activeSource = selection.source ?? null;
+
+  const searchPaths: ConfigPathInfo[] = getDefaultConfigPaths().map((path) => ({
+    path,
+    exists: existsSync(path),
+    active: active === path,
+    source: active === path && activeSource === 'local' ? 'local' : 'default',
+  }));
+
+  if (active && !searchPaths.some((info) => info.path === active)) {
+    searchPaths.unshift({
+      path: active,
+      exists: existsSync(active),
+      active: true,
+      source: activeSource ?? 'default',
+    });
+  }
+
+  return {
+    mode: selection.mode,
+    active,
+    activeSource,
+    localDiscoveryEnabled,
+    searchPaths,
+    envVar: envValue,
+  };
 }
 
 export interface LoadConfigOptions {
@@ -306,17 +318,22 @@ export interface LoadConfigOptions {
 }
 
 export async function loadConfig(
-  explicitPath?: string,
-  options?: LoadConfigOptions,
+  explicitInput?: string,
+  _options?: LoadConfigOptions,
 ): Promise<McpServersConfig> {
+  const selection = getConfigSelection(explicitInput);
+
+  if (selection.mode === 'registry') {
+    return { mcpServers: {}, _configSource: 'registry' };
+  }
+
   let rawConfig: unknown;
   let configSource: string;
 
-  const inlineValue = explicitPath ?? process.env.MCP_CONFIG_PATH;
-  if (inlineValue && isInlineJson(inlineValue)) {
-    configSource = '<inline>';
+  if (selection.mode === 'inline') {
+    configSource = 'inline';
     try {
-      rawConfig = JSON.parse(inlineValue);
+      rawConfig = JSON.parse(selection.input ?? '');
     } catch (e) {
       throw new Error(
         formatCliError(
@@ -325,43 +342,14 @@ export async function loadConfig(
       );
     }
   } else {
-    let configPath: string | undefined;
-
-    if (explicitPath) {
-      configPath = resolve(explicitPath);
-    } else if (process.env.MCP_CONFIG_PATH) {
-      configPath = resolve(process.env.MCP_CONFIG_PATH);
-    }
-
-    if (configPath) {
-      if (!existsSync(configPath)) {
-        throw new Error(formatCliError(configNotFoundError(configPath)));
-      }
-    } else {
-      const legacyPath = checkForLegacyConfig();
-      if (legacyPath) {
-        throw new Error(formatCliError(legacyConfigError(legacyPath)));
-      }
-
-      const searchPaths = getDefaultConfigPaths();
-      for (const path of searchPaths) {
-        if (existsSync(path)) {
-          configPath = path;
-          break;
-        }
-      }
-
-      if (!configPath) {
-        if (options?.allowEmpty) {
-          return { mcpServers: {}, _configSource: '<none>' };
-        }
-        throw new Error(formatCliError(configSearchError()));
-      }
-    }
-
+    const configPath = selection.input ?? '';
     configSource = configPath;
-    const file = Bun.file(configPath);
-    const content = await file.text();
+
+    if (!existsSync(configPath)) {
+      throw new Error(formatCliError(configNotFoundError(configPath)));
+    }
+
+    const content = await Bun.file(configPath).text();
 
     try {
       rawConfig = JSON.parse(content);
@@ -378,7 +366,7 @@ export async function loadConfig(
 
   if (Object.keys(normalized.mcpServers).length === 0) {
     console.error(
-      '[mcpx] Warning: No servers configured. Add server configurations to use MCP tools.',
+      '[mcpx] Warning: Selected config is empty. Registry defaults remain available.',
     );
   }
 
@@ -461,33 +449,20 @@ export async function getServerConfig(
   const registryServer = findServer(registry, serverName);
 
   if (registryServer) {
-    const hasLocalConfig =
-      config._configSource && config._configSource !== '<none>';
     const serverConfig = {
       command: registryServer.recommended.command,
       args: registryServer.recommended.args,
     };
-    const configJson = JSON.stringify({ [serverName]: serverConfig }, null, 2);
 
-    if (hasLocalConfig) {
+    if (config._configSource && config._configSource !== 'registry') {
       console.error(
-        `[mcpx] Server '${serverName}' not found in local config (${config._configSource})`,
+        `[mcpx] Server '${serverName}' not found in selected config (${config._configSource}). Falling back to registry in memory.`,
       );
     } else {
       console.error(
-        `[mcpx] No local config found. Server '${serverName}' not configured.`,
+        `[mcpx] Using registry config in memory for '${serverName}'.`,
       );
     }
-    console.error('[mcpx] Falling back to registry. Using config:');
-    console.error(configJson);
-    if (hasLocalConfig) {
-      console.error(`[mcpx] To persist: add above to ${config._configSource}`);
-    } else {
-      console.error(
-        '[mcpx] To persist: add above to ./.mcp.json (project) or ~/.mcp.json (global)',
-      );
-    }
-    console.error(`[mcpx] Full details: mcpx registry get ${serverName}`);
     if (registryServer.envVars?.length) {
       console.error(
         `[mcpx] Required env vars: ${registryServer.envVars.join(', ')}`,

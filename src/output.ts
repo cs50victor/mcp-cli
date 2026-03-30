@@ -207,7 +207,7 @@ export function formatRegistryServer(server: RegistryServer): string {
   );
   lines.push('');
 
-  lines.push(`${color('Recommended setup:', colors.bold)}`);
+  lines.push(`${color('Default in-memory config:', colors.bold)}`);
   const configJson = JSON.stringify(
     { [server.name]: server.recommended },
     null,
@@ -216,7 +216,7 @@ export function formatRegistryServer(server: RegistryServer): string {
   lines.push(`  ${configJson.split('\n').join('\n  ')}`);
   lines.push('');
   lines.push(
-    `${color('Tip:', colors.dim)} Add the above config to ./.mcp.json (for this project) or ~/.mcp.json (for global access)`,
+    `${color('Tip:', colors.dim)} mcpx uses this config in memory by default.`,
   );
   lines.push('');
 

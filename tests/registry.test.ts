@@ -13,10 +13,7 @@ import {
   type RegistryServer,
 } from '../src/registry';
 
-const LOCAL_REGISTRY_PATH = join(
-  import.meta.dir,
-  '../registry/registry.json',
-);
+const LOCAL_REGISTRY_PATH = join(import.meta.dir, '../registry/registry.json');
 
 describe('registry', () => {
   const originalEnv = process.env.MCPX_REGISTRY_URL;

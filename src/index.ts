@@ -40,9 +40,16 @@ const SUBCOMMANDS = [
   'registry',
 ] as const;
 
+const VISIBLE_SUBCOMMANDS = [
+  'daemon',
+  'grep',
+  'list',
+  'ls',
+  'registry',
+] as const;
+
 interface ParsedArgs {
   command:
-    | 'none'
     | 'list'
     | 'grep'
     | 'info'
@@ -57,7 +64,7 @@ interface ParsedArgs {
   args?: string;
   json: boolean;
   withDescriptions: boolean;
-  configPath?: string;
+  configInput?: string;
   daemonAction?: 'start' | 'stop' | 'status';
   daemonServers?: string[];
   daemonForce?: boolean;
@@ -67,7 +74,7 @@ interface ParsedArgs {
 
 function parseArgs(args: string[]): ParsedArgs {
   const result: ParsedArgs = {
-    command: 'none',
+    command: 'help',
     json: false,
     withDescriptions: false,
   };
@@ -100,7 +107,13 @@ function parseArgs(args: string[]): ParsedArgs {
 
       case '-c':
       case '--config':
-        result.configPath = args[++i];
+        result.configInput = args[++i];
+        if (!result.configInput) {
+          console.error(
+            formatCliError(missingArgumentError('--config', 'path|json')),
+          );
+          process.exit(ErrorCode.CLIENT_ERROR);
+        }
         break;
 
       case '--force':
@@ -119,7 +132,7 @@ function parseArgs(args: string[]): ParsedArgs {
 
   // Determine command from positional arguments
   if (positional.length === 0) {
-    result.command = 'none';
+    result.command = 'help';
   } else if (positional[0] === 'list' || positional[0] === 'ls') {
     result.command = 'list';
   } else if (positional[0] === 'config') {
@@ -173,7 +186,7 @@ function parseArgs(args: string[]): ParsedArgs {
   } else {
     // Check for typos in subcommands before treating as server name
     const input = positional[0];
-    const match = closest(input, SUBCOMMANDS as unknown as string[]);
+    const match = closest(input, VISIBLE_SUBCOMMANDS as unknown as string[]);
     const dist = distance(input, match);
     if (dist > 0 && dist <= 2) {
       console.error(`Unknown command: '${input}'. Did you mean '${match}'?`);
@@ -190,35 +203,32 @@ function parseArgs(args: string[]): ParsedArgs {
 function printHelp(): void {
   const socketPath = getDaemonSocketPath();
   console.log(`
-mcpx v${VERSION} - Dynamic MCP tool discovery and invocation for AI agents
+mcpx v${VERSION} - Registry-backed MCP discovery and invocation for AI agents
 
 Usage:
   mcpx                                     Show this help message
-  mcpx list                                List all servers and tools
+  mcpx list                                List available servers and tools
   mcpx ls                                  Alias for list
-  mcpx [options] config                    Show config file locations
-  mcpx [options] grep <pattern>            Search tools by glob pattern
+  mcpx [options] grep <pattern>            Search available tools by glob pattern
   mcpx [options] <server>                  Show server tools and parameters
   mcpx [options] <server>/<tool>           Show tool schema and description
   mcpx [options] <server>/<tool> <json>    Call tool with arguments
   mcpx daemon <start|stop|status>          Manage persistent connection daemon
   mcpx registry                            Show registry command help
   mcpx registry list                       List available MCP servers from registry
-  mcpx registry get <name>                 Show server details and config
+  mcpx registry get <name>                 Show server details and default config
 
 Options:
   -h, --help               Show this help message
   -v, --version            Show version number
   -j, --json               Output as JSON (for scripting)
   -d, --with-descriptions  Include tool descriptions
-  -c, --config <path|json> Config file path or inline JSON (if starts with '{')
 
 Output:
   stdout                   Tool results and data (default: text, --json for JSON)
   stderr                   Errors and diagnostics
 
 Environment Variables:
-  MCP_CONFIG_PATH          Path to config file (alternative to -c)
   MCP_DEBUG                Enable debug output
   MCP_TIMEOUT              Request timeout in seconds (default: ${DEFAULT_TIMEOUT_SECONDS})
   MCP_CONCURRENCY          Max parallel server connections (default: ${DEFAULT_CONCURRENCY})
@@ -230,28 +240,24 @@ Environment Variables:
   MCPX_REGISTRY_URL        Custom registry URL (default: GitHub-hosted registry)
 
 Examples:
-  mcpx list                               # List all servers
+  mcpx                                    # Show help
+  mcpx list                               # List available servers
   mcpx list -d                            # List with descriptions
   mcpx grep "*file*"                      # Search for file tools
-  mcpx filesystem                         # Show server tools
-  mcpx filesystem/read_file               # Show tool schema
-  mcpx filesystem/read_file '{"path":"./README.md"}'  # Call tool
-  echo '{"path":"./file"}' | mcpx server/tool -       # Read JSON from stdin
-
-  # Inline config (flat format):
-  mcpx -c '{"s":{"command":"npx","args":["-y","@mcp/server"]}}' s/tool
+  mcpx time                               # Show server tools
+  mcpx time/get_current_time              # Show tool schema
+  echo '{"path":"./file"}' | mcpx server/tool -        # Read JSON from stdin
 
 Registry (discover MCP servers):
   mcpx registry                           # Show registry help
   mcpx registry list                      # List all available servers
   mcpx registry list --json               # List as JSON
   mcpx registry get filesystem            # Show filesystem server config
-  mcpx registry get playwright --json     # Get config as JSON for .mcp.json
+  mcpx registry get playwright --json     # Get registry metadata as JSON
 
 Daemon Mode (persistent connections for stateful servers):
-  mcpx daemon start                          # Start daemon + all servers from config
-  mcpx daemon start <server...>              # Start daemon + specific server(s)
-  mcpx daemon start browser -c '{...}'       # Start with inline config
+  mcpx daemon start                          # Start daemon process
+  mcpx daemon start <server...>              # Start registry-backed server(s)
   mcpx daemon stop                           # Stop daemon entirely
   mcpx daemon stop <server>                  # Stop specific server, keep daemon
   mcpx daemon stop --force                   # Force stop (bypasses >1 connection check)
@@ -264,17 +270,8 @@ Daemon Mode (persistent connections for stateful servers):
   With daemon: 'mcpx daemon start server' keeps connection alive, then
                'mcpx server/tool' reuses that persistent connection.
 
-Config File:
-  The CLI looks for config in:
-    1. Path specified by MCP_CONFIG_PATH or -c/--config
-    2. ./.mcp.json (current directory, preferred)
-    3. ./mcp.json
-    4. ~/.mcp.json
-    5. ~/.config/mcp/mcp.json
-
-  Supported formats:
-    Flat:    {"server": {"command": "...", "args": [...]}}
-    Wrapped: {"mcpServers": {"server": {"command": "..."}}}
+Default Resolution:
+  mcpx resolves servers from the registry and invokes them in memory.
 `);
 }
 
@@ -282,7 +279,6 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
 
   switch (args.command) {
-    case 'none':
     case 'help':
       printHelp();
       break;
@@ -295,7 +291,7 @@ async function main(): Promise<void> {
       await listCommand({
         withDescriptions: args.withDescriptions,
         json: args.json,
-        configPath: args.configPath,
+        configInput: args.configInput,
       });
       break;
 
@@ -304,7 +300,7 @@ async function main(): Promise<void> {
         pattern: args.pattern ?? '',
         withDescriptions: args.withDescriptions,
         json: args.json,
-        configPath: args.configPath,
+        configInput: args.configInput,
       });
       break;
 
@@ -313,7 +309,7 @@ async function main(): Promise<void> {
         target: args.target ?? '',
         json: args.json,
         withDescriptions: args.withDescriptions,
-        configPath: args.configPath,
+        configInput: args.configInput,
       });
       break;
 
@@ -322,14 +318,14 @@ async function main(): Promise<void> {
         target: args.target ?? '',
         args: args.args,
         json: args.json,
-        configPath: args.configPath,
+        configInput: args.configInput,
       });
       break;
 
     case 'config':
       await configCommand({
         json: args.json,
-        configPath: args.configPath,
+        configInput: args.configInput,
       });
       break;
 
@@ -351,7 +347,7 @@ async function main(): Promise<void> {
           }
           let config: McpServersConfig;
           try {
-            config = await loadConfig(args.configPath);
+            config = await loadConfig(args.configInput, { allowEmpty: true });
           } catch (error) {
             console.error((error as Error).message);
             process.exit(ErrorCode.CLIENT_ERROR);

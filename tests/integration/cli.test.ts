@@ -13,13 +13,17 @@ import { $ } from 'bun';
 
 describe('CLI Integration Tests', () => {
   let tempDir: string;
-  let configPath: string;
+  let configJson: string;
+  let daemonConfigJson: string;
+  let daemonSocketPath: string;
   let testFilePath: string;
 
   beforeAll(async () => {
     // Create temp directory for test files
     // NOTE(victor): realpath resolves macOS /var -> /private/var symlink
-    tempDir = await realpath(await mkdtemp(join(tmpdir(), 'mcpx-integration-')));
+    tempDir = await realpath(
+      await mkdtemp(join(tmpdir(), 'mcpx-integration-')),
+    );
 
     // Create a test file to read
     testFilePath = join(tempDir, 'test.txt');
@@ -30,46 +34,73 @@ describe('CLI Integration Tests', () => {
     await mkdir(subDir);
     await writeFile(join(subDir, 'nested.txt'), 'Nested content');
 
-    // Create config pointing to the temp directory
-    configPath = join(tempDir, 'mcp_servers.json');
-    await writeFile(
-      configPath,
-      JSON.stringify({
-        mcpServers: {
-          filesystem: {
-            command: 'npx',
-            args: ['-y', '@modelcontextprotocol/server-filesystem', tempDir],
-          },
+    configJson = JSON.stringify({
+      mcpServers: {
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem', tempDir],
         },
-      })
-    );
+      },
+    });
+
+    daemonConfigJson = JSON.stringify({
+      mcpServers: {
+        customfs: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem', tempDir],
+        },
+      },
+    });
+
+    daemonSocketPath = join(tempDir, 'mcpx-daemon.sock');
   });
 
   afterAll(async () => {
+    await runCliCustom(['daemon', 'stop', '--force'], {
+      env: { MCP_DAEMON_SOCKET: daemonSocketPath },
+    });
+    await rm(daemonSocketPath, { force: true });
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  // Helper to run CLI commands
-  async function runCli(
-    args: string[]
+  async function runCliCustom(
+    args: string[],
+    options: {
+      configJson?: string;
+      env?: Record<string, string>;
+    } = {},
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const cliPath = join(import.meta.dir, '..', '..', 'src', 'index.ts');
+    const command = ['bun', 'run', cliPath];
 
-    try {
-      const result =
-        await $`bun run ${cliPath} -c ${configPath} ${args}`.nothrow();
-      return {
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
-        exitCode: result.exitCode,
-      };
-    } catch (error: any) {
-      return {
-        stdout: error.stdout?.toString() || '',
-        stderr: error.stderr?.toString() || '',
-        exitCode: error.exitCode || 1,
-      };
+    if (options.configJson) {
+      command.push('-c', options.configJson);
     }
+
+    command.push(...args);
+
+    const proc = Bun.spawn(command, {
+      env: {
+        ...process.env,
+        ...options.env,
+      },
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+
+    const stdoutPromise = new Response(proc.stdout).text();
+    const stderrPromise = new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
+    const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
+
+    return { stdout, stderr, exitCode };
+  }
+
+  // Helper to run CLI commands
+  async function runCli(
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    return runCliCustom(args, { configJson });
   }
 
   describe('--help', () => {
@@ -78,9 +109,15 @@ describe('CLI Integration Tests', () => {
       const result = await $`bun run ${cliPath} --help`.nothrow();
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout.toString()).toContain('mcpx');
-      expect(result.stdout.toString()).toContain('Usage:');
-      expect(result.stdout.toString()).toContain('Options:');
+      const stdout = result.stdout.toString();
+      expect(stdout).toContain('mcpx');
+      expect(stdout).toContain('Usage:');
+      expect(stdout).toContain('Options:');
+      expect(stdout).not.toContain('mcpx [options] config');
+      expect(stdout).not.toContain('-c, --config');
+      expect(stdout).not.toContain('MCP_CONFIG_PATH');
+      expect(stdout).not.toContain('MCPX_USE_LOCAL_CONFIG');
+      expect(stdout).not.toContain('.mcp.json');
     });
   });
 
@@ -95,17 +132,16 @@ describe('CLI Integration Tests', () => {
   });
 
   describe('list command', () => {
-    test('lists servers and tools', async () => {
+    test('shows help with no arguments', async () => {
       const result = await runCli([]);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('filesystem');
-      // Should contain filesystem tools
-      expect(result.stdout).toMatch(/read_file|list_directory|write_file/);
+      expect(result.stdout).toContain('Usage:');
+      expect(result.stdout).toContain('mcpx list');
     });
 
     test('lists with descriptions using -d flag', async () => {
-      const result = await runCli(['-d']);
+      const result = await runCli(['list', '-d']);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('filesystem');
@@ -279,6 +315,43 @@ describe('CLI Integration Tests', () => {
     });
   });
 
+  describe('daemon command', () => {
+    test('keeps custom inline servers available across follow-up calls', async () => {
+      const env = { MCP_DAEMON_SOCKET: daemonSocketPath };
+
+      await runCliCustom(['daemon', 'stop', '--force'], { env });
+      await rm(daemonSocketPath, { force: true });
+
+      const start = await runCliCustom(['daemon', 'start'], {
+        configJson: daemonConfigJson,
+        env,
+      });
+
+      expect(start.exitCode).toBe(0);
+      expect(start.stdout).toContain('Daemon started');
+      expect(start.stdout).toContain('customfs');
+
+      const status = await runCliCustom(['daemon', 'status'], { env });
+
+      expect(status.exitCode).toBe(0);
+      expect(status.stdout).toContain('Status: running');
+      expect(status.stdout).toContain('customfs');
+
+      const call = await runCliCustom(
+        ['customfs/read_file', JSON.stringify({ path: testFilePath })],
+        { env },
+      );
+
+      expect(call.exitCode).toBe(0);
+      expect(call.stdout).toContain('Hello from test file!');
+
+      const stop = await runCliCustom(['daemon', 'stop', '--force'], { env });
+
+      expect(stop.exitCode).toBe(0);
+      expect(stop.stdout).toContain('Daemon stopped');
+    });
+  });
+
   describe('error handling', () => {
     test('handles missing config gracefully', async () => {
       const cliPath = join(import.meta.dir, '..', '..', 'src', 'index.ts');
@@ -286,7 +359,7 @@ describe('CLI Integration Tests', () => {
         await $`bun run ${cliPath} list -c /nonexistent/config.json`.nothrow();
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr.toString()).toContain('not found');
+      expect(result.stderr.toString()).toContain('Config file not found');
     });
 
     test('handles unknown options', async () => {
@@ -307,24 +380,19 @@ describe('CLI Integration Tests', () => {
  */
 describe('HTTP Transport Integration Tests', () => {
   let tempDir: string;
-  let configPath: string;
+  let configJson: string;
 
   beforeAll(async () => {
     // Create temp directory for config
     tempDir = await mkdtemp(join(tmpdir(), 'mcpx-http-test-'));
 
-    // Create config with HTTP-based MCP server
-    configPath = join(tempDir, 'mcp_servers.json');
-    await writeFile(
-      configPath,
-      JSON.stringify({
-        mcpServers: {
-          deepwiki: {
-            url: 'https://mcp.deepwiki.com/mcp',
-          },
+    configJson = JSON.stringify({
+      mcpServers: {
+        deepwiki: {
+          url: 'https://mcp.deepwiki.com/mcp',
         },
-      })
-    );
+      },
+    });
   });
 
   afterAll(async () => {
@@ -333,13 +401,13 @@ describe('HTTP Transport Integration Tests', () => {
 
   // Helper to run CLI commands with HTTP config
   async function runCli(
-    args: string[]
+    args: string[],
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const cliPath = join(import.meta.dir, '..', '..', 'src', 'index.ts');
 
     try {
       const result =
-        await $`bun run ${cliPath} -c ${configPath} ${args}`.nothrow();
+        await $`bun run ${cliPath} -c ${configJson} ${args}`.nothrow();
       return {
         stdout: result.stdout.toString(),
         stderr: result.stderr.toString(),

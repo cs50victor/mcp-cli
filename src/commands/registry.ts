@@ -29,7 +29,7 @@ Usage:
   mcpx registry list              List all available servers
   mcpx registry list --json       List servers as JSON
   mcpx registry get <name>        Show server details and config
-  mcpx registry get <name> --json Get server config as JSON (for .mcp.json)
+  mcpx registry get <name> --json Get server metadata as JSON
   mcpx registry <name>            Shorthand for 'get <name>'
 
 Environment:
@@ -54,10 +54,14 @@ export async function registryCommand(options: RegistryOptions): Promise<void> {
   }
 
   if (options.action === 'list') {
+    const servers = [...registry.servers].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
     if (options.json) {
-      console.log(formatJson(registry.servers));
+      console.log(formatJson(servers));
     } else {
-      console.log(formatRegistryList(registry.servers));
+      console.log(formatRegistryList(servers));
     }
     return;
   }

@@ -36,7 +36,7 @@ export function configNotFoundError(path: string): CliError {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_NOT_FOUND',
     message: `Config file not found: ${path}`,
-    suggestion: `Create .mcp.json with: { "server-name": { "command": "..." } }. Run 'mcpx --help' first if you haven't.`,
+    suggestion: 'Pass a valid path with -c/--config.',
   };
 }
 
@@ -44,10 +44,9 @@ export function configSearchError(): CliError {
   return {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_NOT_FOUND',
-    message: 'No config file found in search paths',
-    details:
-      'Searched: ./.mcp.json, ./mcp.json, ~/.mcp.json, ~/.config/mcp/mcp.json',
-    suggestion: `Create .mcp.json in current directory or use -c/--config to specify path. Run 'mcpx --help' first if you haven't.`,
+    message: 'No config file selected',
+    details: 'mcpx defaults to registry-backed in-memory servers.',
+    suggestion: 'Pass -c/--config if you intend to use an explicit override.',
   };
 }
 
@@ -58,9 +57,10 @@ export function configInvalidJsonError(
   return {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_INVALID_JSON',
-    message: `Invalid JSON in config file: ${path}`,
+    message: `Invalid JSON in config input: ${path}`,
     details: parseError,
-    suggestion: `Check for syntax errors: missing commas, unquoted keys, trailing commas. Run 'mcpx --help' for config format examples.`,
+    suggestion:
+      "Check for syntax errors: missing commas, unquoted keys, trailing commas. Run 'mcpx --help' for config examples.",
   };
 }
 
@@ -68,9 +68,9 @@ export function configMissingFieldError(path: string): CliError {
   return {
     code: ErrorCode.CLIENT_ERROR,
     type: 'CONFIG_MISSING_FIELD',
-    message: `Config file missing required "mcpServers" object`,
-    details: `File: ${path}`,
-    suggestion: `Config must have structure: { "mcpServers": { "name": { "command": "...", "args": [...] } } }. Run 'mcpx --help' for full examples.`,
+    message: 'Config input missing required server object',
+    details: `Input: ${path}`,
+    suggestion: `Config must have structure: { "mcpServers": { "name": { "command": "...", "args": [...] } } } or { "name": { "command": "...", "args": [...] } }. Run 'mcpx --help' for full examples.`,
   };
 }
 
@@ -80,12 +80,12 @@ export function serverNotFoundError(
   registryServers: string[] = [],
   configSource?: string,
 ): CliError {
-  const allServers = [...localServers, ...registryServers];
+  const allServers = [...new Set([...localServers, ...registryServers])];
   const availableList =
     allServers.length > 0 ? allServers.join(', ') : '(none)';
   const sourceInfo = configSource ? ` (from ${configSource})` : '';
 
-  let suggestion = "Run 'mcpx registry list' to see available servers.";
+  let suggestion = "Run 'mcpx registry list' to see built-in servers.";
 
   if (allServers.length > 0) {
     const match = closest(serverName, allServers);
@@ -101,7 +101,7 @@ export function serverNotFoundError(
   return {
     code: ErrorCode.CLIENT_ERROR,
     type: 'SERVER_NOT_FOUND',
-    message: `Server "${serverName}" not found in config`,
+    message: `Server "${serverName}" not found`,
     details: `Available servers${sourceInfo}: ${availableList}`,
     suggestion,
   };
@@ -132,6 +132,13 @@ export function serverConnectionError(
   } else if (cause.includes('EACCES') || cause.includes('permission')) {
     suggestion =
       'Permission denied. Check file permissions on the server command/script. Try: chmod +x <script>';
+  } else if (
+    cause.includes('/path/to/') ||
+    /<[^>]+>/.test(cause) ||
+    cause.includes('allowed directory')
+  ) {
+    suggestion =
+      "The registry default likely needs runtime-specific values. Inspect the notes with 'mcpx registry get <server>' and retry with the required values.";
   }
 
   return {
@@ -192,7 +199,7 @@ export function toolExecutionError(
       'Rate limited. Wait before retrying. Consider adding delays between calls.';
   } else if (cause.includes('timeout')) {
     suggestion =
-      'Operation timed out. The tool may need more time. Check MCP_TIMEOUT env var (default 30s).';
+      'Operation timed out. The tool may need more time. Check MCP_TIMEOUT env var (default 1800s).';
   }
 
   return {

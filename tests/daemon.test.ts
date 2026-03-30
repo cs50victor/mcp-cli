@@ -38,7 +38,6 @@ describe('getDaemonSpawnArgs', () => {
   });
 });
 
-// NOTE(victor): daemon subprocess was failing with CONFIG_NOT_FOUND when started
-// from directories without mcp_servers.json. Fix: index.ts checks _MCPX_DAEMON
-// env var before loadConfig - subprocess receives server configs via IPC instead
-// Integration test: `cd /tmp && mcpx daemon start -c '{...}'` should succeed
+// NOTE(victor): daemon subprocess must bypass normal CLI config parsing.
+// index.ts checks _MCPX_DAEMON before loadConfig so the daemon process starts
+// cleanly and receives resolved server configs via IPC instead.

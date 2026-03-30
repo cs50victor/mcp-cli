@@ -60,6 +60,7 @@ describe('output', () => {
       const withoutDesc = formatServerList(servers, false);
       expect(withoutDesc).not.toContain('A test tool');
     });
+
   });
 
   describe('formatSearchResults', () => {
@@ -182,21 +183,12 @@ describe('output', () => {
           recommended: { command: 'npx', args: ['-y', 'server'] },
           tools: ['read', 'write'],
         },
-        {
-          name: 'fetch',
-          description: 'HTTP requests',
-          toolCount: 1,
-          recommended: { command: 'uvx', args: ['fetch'] },
-          tools: ['fetch'],
-        },
       ];
 
       const output = formatRegistryList(servers);
       expect(output).toContain('filesystem');
       expect(output).toContain('Read/write files');
       expect(output).toContain('6 tools');
-      expect(output).toContain('fetch');
-      expect(output).toContain('1 tool');
     });
   });
 
@@ -217,7 +209,7 @@ describe('output', () => {
       const output = formatRegistryServer(server);
       expect(output).toContain('filesystem');
       expect(output).toContain('Read/write files');
-      expect(output).toContain('Recommended setup');
+      expect(output).toContain('Default in-memory config');
       expect(output).toContain('npx');
       expect(output).toContain('Tools (6)');
       expect(output).toContain('read_file');

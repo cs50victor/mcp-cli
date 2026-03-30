@@ -23,7 +23,7 @@ search_across_servers() {
     for server in github gitlab; do
         if mcpx "$server" &>/dev/null; then
             echo "Results from $server:"
-            mcpx "$server/search_repositories" "{\"query\": \"$query\", \"per_page\": 3}" 2>/dev/null || echo "  (server unavailable)"
+            mcpx "$server/search_repositories" "{\"query\": \"$query\"}" 2>/dev/null || echo "  (server unavailable)"
             echo ""
         fi
     done
@@ -39,16 +39,16 @@ analyze_repository() {
 
     # Get repo info
     local info
-    info=$(mcpx github/get_repository "{\"owner\": \"$owner\", \"repo\": \"$repo\"}" --json)
+    info=$(mcpx github/search_repositories "{\"query\": \"repo:$owner/$repo\", \"perPage\": 1}" --json)
 
     # Extract fields
     local name stars
-    name=$(echo "$info" | jq -r '.content[0].text' | jq -r '.name // "unknown"')
-    stars=$(echo "$info" | jq -r '.content[0].text' | jq -r '.stargazers_count // 0')
+    name=$(echo "$info" | jq -r --arg full_name "$owner/$repo" '.content[0].text | fromjson | map(select(.full_name == $full_name)) | .[0].full_name // "unknown"')
+    stars=$(echo "$info" | jq -r --arg full_name "$owner/$repo" '.content[0].text | fromjson | map(select(.full_name == $full_name)) | .[0].stargazers_count // 0')
 
     # Get counts
     local commits issues
-    commits=$(mcpx github/list_commits "{\"owner\": \"$owner\", \"repo\": \"$repo\", \"per_page\": 100}" --json | jq '[.content[0].text | fromjson | length] | add')
+    commits=$(mcpx github/list_commits "{\"owner\": \"$owner\", \"repo\": \"$repo\", \"perPage\": 100}" --json | jq '[.content[0].text | fromjson | length] | add')
     issues=$(mcpx github/list_issues "{\"owner\": \"$owner\", \"repo\": \"$repo\", \"state\": \"open\", \"per_page\": 100}" --json | jq '[.content[0].text | fromjson | length] | add')
 
     echo "Repository: $name"
@@ -65,16 +65,19 @@ scrape_with_browser() {
     echo "Scraping $url (selector: $selector)"
     echo "---"
 
-    # Start browser daemon for session persistence
-    mcpx daemon start browser
+    # Start Playwright daemon for session persistence
+    mcpx daemon start playwright
 
     # Ensure cleanup on exit
-    trap 'mcpx daemon stop browser' EXIT
+    trap 'mcpx daemon stop playwright' EXIT
 
-    # Navigate and extract
-    mcpx browser/navigate "{\"url\": \"$url\"}"
-    mcpx browser/wait_for_selector "{\"selector\": \"$selector\", \"timeout\": 5000}"
-    mcpx browser/get_text "{\"selector\": \"$selector\"}"
+    # Navigate, then extract text from the requested selector
+    mcpx playwright/browser_navigate "{\"url\": \"$url\"}"
+    local payload
+    payload=$(jq -n --arg selector "$selector" '{
+        code: "async (page) => { const locator = page.locator(" + ($selector | tojson) + ").first(); await locator.waitFor(); return await locator.innerText(); }"
+    }')
+    mcpx playwright/browser_run_code "$payload"
 }
 
 # Example 4: Batch file processing
@@ -96,7 +99,7 @@ process_files() {
             echo "Processing: $file"
             # Count lines
             local content
-            content=$(mcpx filesystem/read_file "{\"path\": \"$file\"}" --raw)
+            content=$(mcpx filesystem/read_file "{\"path\": \"$file\"}")
             local lines
             lines=$(echo "$content" | wc -l)
             echo "  Lines: $lines"
