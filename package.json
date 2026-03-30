@@ -1,11 +1,15 @@
 {
-  "name": "mcpx",
+  "name": "@cs50victor/mcpx",
   "version": "1.0.0",
   "description": "A lightweight CLI for interacting with MCP (Model Context Protocol) servers",
   "type": "module",
   "main": "src/index.ts",
   "bin": {
     "mcpx": "src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
