@@ -2,11 +2,9 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  type CliError,
   ErrorCode,
   configInvalidJsonError,
-  configNotFoundError,
-  configSearchError,
+  configInlineOnlyError,
   formatCliError,
   serverNotFoundError,
 } from './errors.js';
@@ -166,49 +164,6 @@ function substituteEnvVarsInObject<T>(obj: T): T {
   return obj;
 }
 
-function getDefaultConfigPaths(): string[] {
-  const paths: string[] = [];
-  const home = homedir();
-
-  paths.push(resolve('./.mcp.json'));
-  paths.push(resolve('./mcp.json'));
-  paths.push(join(home, '.mcp.json'));
-  paths.push(join(home, '.config', 'mcp', 'mcp.json'));
-
-  return paths;
-}
-
-function getLegacyConfigPaths(): string[] {
-  const paths: string[] = [];
-  const home = homedir();
-
-  paths.push(resolve('./mcp_servers.json'));
-  paths.push(join(home, '.mcp_servers.json'));
-  paths.push(join(home, '.config', 'mcp', 'mcp_servers.json'));
-
-  return paths;
-}
-
-function checkForLegacyConfig(): string | undefined {
-  for (const path of getLegacyConfigPaths()) {
-    if (existsSync(path)) {
-      return path;
-    }
-  }
-  return undefined;
-}
-
-export function legacyConfigError(legacyPath: string): CliError {
-  return {
-    code: ErrorCode.CLIENT_ERROR,
-    type: 'CONFIG_LEGACY_FILENAME',
-    message: `"mcp_servers.json" filename is no longer supported (deprecated in v0.2.0)`,
-    details: `Found: ${legacyPath}`,
-    suggestion:
-      'Rename your config file:\n  mv mcp_servers.json .mcp.json\n\nSupported filenames: .mcp.json, mcp.json\nSee: https://github.com/cs50victor/mcpx#config-format',
-  };
-}
-
 function isWrappedFormat(
   config: unknown,
 ): config is { mcpServers: Record<string, unknown> } {
@@ -249,54 +204,6 @@ function normalizeConfig(rawConfig: unknown): {
   return { mcpServers: {} };
 }
 
-export interface ConfigPathInfo {
-  path: string;
-  exists: boolean;
-  active: boolean;
-  source?: 'cli' | 'env' | 'search';
-}
-
-export interface ConfigPathsResult {
-  active: string | null;
-  activeSource: 'cli' | 'env' | 'search' | null;
-  searchPaths: ConfigPathInfo[];
-  envVar: string | undefined;
-}
-
-export function getConfigPaths(explicitPath?: string): ConfigPathsResult {
-  const envPath = process.env.MCP_CONFIG_PATH;
-
-  type Source = 'cli' | 'env' | 'search';
-  const candidates: Array<{ path: string; source: Source }> = [];
-
-  if (explicitPath)
-    candidates.push({ path: resolve(explicitPath), source: 'cli' });
-  if (envPath) candidates.push({ path: resolve(envPath), source: 'env' });
-  for (const p of getDefaultConfigPaths())
-    candidates.push({ path: p, source: 'search' });
-
-  const seen = new Set<string>();
-  const pathInfos: ConfigPathInfo[] = [];
-  let active: string | null = null;
-  let activeSource: Source | null = null;
-
-  for (const { path, source } of candidates) {
-    if (seen.has(path)) continue;
-    seen.add(path);
-
-    const exists = existsSync(path);
-    const isActive = exists && active === null;
-    if (isActive) {
-      active = path;
-      activeSource = source;
-    }
-
-    pathInfos.push({ path, exists, active: isActive, source });
-  }
-
-  return { active, activeSource, searchPaths: pathInfos, envVar: envPath };
-}
-
 function isInlineJson(value: string): boolean {
   return value.trimStart().startsWith('{');
 }
@@ -307,78 +214,32 @@ export interface LoadConfigOptions {
 
 export async function loadConfig(
   explicitPath?: string,
-  options?: LoadConfigOptions,
+  _options?: LoadConfigOptions,
 ): Promise<McpServersConfig> {
+  if (!explicitPath) {
+    return { mcpServers: {}, _configSource: 'registry' };
+  }
+
+  if (!isInlineJson(explicitPath)) {
+    throw new Error(
+      formatCliError(configInlineOnlyError(resolve(explicitPath))),
+    );
+  }
+
   let rawConfig: unknown;
-  let configSource: string;
-
-  const inlineValue = explicitPath ?? process.env.MCP_CONFIG_PATH;
-  if (inlineValue && isInlineJson(inlineValue)) {
-    configSource = '<inline>';
-    try {
-      rawConfig = JSON.parse(inlineValue);
-    } catch (e) {
-      throw new Error(
-        formatCliError(
-          configInvalidJsonError('<inline>', (e as Error).message),
-        ),
-      );
-    }
-  } else {
-    let configPath: string | undefined;
-
-    if (explicitPath) {
-      configPath = resolve(explicitPath);
-    } else if (process.env.MCP_CONFIG_PATH) {
-      configPath = resolve(process.env.MCP_CONFIG_PATH);
-    }
-
-    if (configPath) {
-      if (!existsSync(configPath)) {
-        throw new Error(formatCliError(configNotFoundError(configPath)));
-      }
-    } else {
-      const legacyPath = checkForLegacyConfig();
-      if (legacyPath) {
-        throw new Error(formatCliError(legacyConfigError(legacyPath)));
-      }
-
-      const searchPaths = getDefaultConfigPaths();
-      for (const path of searchPaths) {
-        if (existsSync(path)) {
-          configPath = path;
-          break;
-        }
-      }
-
-      if (!configPath) {
-        if (options?.allowEmpty) {
-          return { mcpServers: {}, _configSource: '<none>' };
-        }
-        throw new Error(formatCliError(configSearchError()));
-      }
-    }
-
-    configSource = configPath;
-    const file = Bun.file(configPath);
-    const content = await file.text();
-
-    try {
-      rawConfig = JSON.parse(content);
-    } catch (e) {
-      throw new Error(
-        formatCliError(
-          configInvalidJsonError(configPath, (e as Error).message),
-        ),
-      );
-    }
+  try {
+    rawConfig = JSON.parse(explicitPath);
+  } catch (e) {
+    throw new Error(
+      formatCliError(configInvalidJsonError('<inline>', (e as Error).message)),
+    );
   }
 
   const normalized = normalizeConfig(rawConfig);
 
   if (Object.keys(normalized.mcpServers).length === 0) {
     console.error(
-      '[mcpx] Warning: No servers configured. Add server configurations to use MCP tools.',
+      '[mcpx] Warning: Inline config is empty. Registry defaults remain available.',
     );
   }
 
@@ -442,7 +303,7 @@ export async function loadConfig(
   }
 
   const config: McpServersConfig = substituteEnvVarsInObject(normalized);
-  config._configSource = configSource;
+  config._configSource = 'inline';
 
   return config;
 }
@@ -461,33 +322,12 @@ export async function getServerConfig(
   const registryServer = findServer(registry, serverName);
 
   if (registryServer) {
-    const hasLocalConfig =
-      config._configSource && config._configSource !== '<none>';
     const serverConfig = {
       command: registryServer.recommended.command,
       args: registryServer.recommended.args,
     };
-    const configJson = JSON.stringify({ [serverName]: serverConfig }, null, 2);
 
-    if (hasLocalConfig) {
-      console.error(
-        `[mcpx] Server '${serverName}' not found in local config (${config._configSource})`,
-      );
-    } else {
-      console.error(
-        `[mcpx] No local config found. Server '${serverName}' not configured.`,
-      );
-    }
-    console.error('[mcpx] Falling back to registry. Using config:');
-    console.error(configJson);
-    if (hasLocalConfig) {
-      console.error(`[mcpx] To persist: add above to ${config._configSource}`);
-    } else {
-      console.error(
-        '[mcpx] To persist: add above to ./.mcp.json (project) or ~/.mcp.json (global)',
-      );
-    }
-    console.error(`[mcpx] Full details: mcpx registry get ${serverName}`);
+    console.error(`[mcpx] Using registry config in memory for '${serverName}'.`);
     if (registryServer.envVars?.length) {
       console.error(
         `[mcpx] Required env vars: ${registryServer.envVars.join(', ')}`,
@@ -496,6 +336,9 @@ export async function getServerConfig(
     if (registryServer.notes) {
       console.error(`[mcpx] Note: ${registryServer.notes}`);
     }
+    console.error(
+      '[mcpx] Override with -c/--config inline JSON if you need custom args, env, cwd, headers, or tool filters.',
+    );
     return serverConfig;
   }
 

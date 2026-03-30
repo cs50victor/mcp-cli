@@ -39,12 +39,12 @@ analyze_repository() {
 
     # Get repo info
     local info
-    info=$(mcpx github/get_repository "{\"owner\": \"$owner\", \"repo\": \"$repo\"}" --json)
+    info=$(mcpx github/search_repositories "{\"query\": \"$owner/$repo\"}" --json)
 
     # Extract fields
     local name stars
-    name=$(echo "$info" | jq -r '.content[0].text' | jq -r '.name // "unknown"')
-    stars=$(echo "$info" | jq -r '.content[0].text' | jq -r '.stargazers_count // 0')
+    name=$(echo "$info" | jq -r '.content[0].text' | jq -r '.[0].full_name // "unknown"')
+    stars=$(echo "$info" | jq -r '.content[0].text' | jq -r '.[0].stargazers_count // 0')
 
     # Get counts
     local commits issues
@@ -65,16 +65,15 @@ scrape_with_browser() {
     echo "Scraping $url (selector: $selector)"
     echo "---"
 
-    # Start browser daemon for session persistence
-    mcpx daemon start browser
+    # Start Playwright daemon for session persistence
+    mcpx daemon start playwright
 
     # Ensure cleanup on exit
-    trap 'mcpx daemon stop browser' EXIT
+    trap 'mcpx daemon stop playwright' EXIT
 
-    # Navigate and extract
-    mcpx browser/navigate "{\"url\": \"$url\"}"
-    mcpx browser/wait_for_selector "{\"selector\": \"$selector\", \"timeout\": 5000}"
-    mcpx browser/get_text "{\"selector\": \"$selector\"}"
+    # Navigate, then inspect the next tool schema before choosing the follow-up action
+    mcpx playwright/browser_navigate "{\"url\": \"$url\"}"
+    mcpx playwright/browser_evaluate
 }
 
 # Example 4: Batch file processing
@@ -96,7 +95,7 @@ process_files() {
             echo "Processing: $file"
             # Count lines
             local content
-            content=$(mcpx filesystem/read_file "{\"path\": \"$file\"}" --raw)
+            content=$(mcpx filesystem/read_file "{\"path\": \"$file\"}")
             local lines
             lines=$(echo "$content" | wc -l)
             echo "  Lines: $lines"

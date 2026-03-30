@@ -19,6 +19,7 @@ mcpx <server>/<tool> '<json>'     # Call tool with JSON arguments
 ```
 
 Add `-d` to include descriptions (e.g., `mcpx -d`, `mcpx github -d`).
+Use `-c '<json>'` only when a server needs a custom command, args, env, cwd, headers, or tool filters.
 
 ### Workflow
 
@@ -31,10 +32,10 @@ Add `-d` to include descriptions (e.g., `mcpx -d`, `mcpx github -d`).
 For servers that maintain state across calls:
 
 ```bash
-mcpx daemon start browser          # Start persistent connection
-mcpx browser/navigate '{"url": "..."}'
-mcpx browser/click '{"selector": "..."}'
-mcpx daemon stop browser           # Stop when done
+mcpx daemon start playwright               # Start persistent connection
+mcpx playwright/browser_navigate '{"url": "..."}'
+mcpx playwright/browser_click '{"selector": "..."}'
+mcpx daemon stop playwright                # Stop when done
 ```
 
 Without daemon mode, each call starts a fresh server process, losing prior state.
@@ -42,8 +43,12 @@ Without daemon mode, each call starts a fresh server process, losing prior state
 ### JSON Arguments
 
 ```bash
-# Inline JSON
-mcpx github/search_repos '{"query": "mcp", "per_page": 5}'
+# Inspect the schema first
+mcpx time/get_current_time
+
+# Inline override for runtime-specific servers
+mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' \
+  filesystem/read_file '{"path":"./README.md"}'
 
 # From stdin (for complex JSON with quotes)
 mcpx server/tool - <<EOF

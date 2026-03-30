@@ -61,13 +61,14 @@ describe('errors', () => {
       expect(error.type).toBe('CONFIG_NOT_FOUND');
       expect(error.message).toContain('/path/to/config.json');
       expect(error.suggestion).toBeDefined();
+      expect(error.suggestion).toContain('-c/--config');
     });
 
-    test('configSearchError lists search paths', () => {
+    test('configSearchError explains inline-only config', () => {
       const error = configSearchError();
       expect(error.type).toBe('CONFIG_NOT_FOUND');
-      expect(error.details).toContain('Searched:');
-      expect(error.suggestion).toContain('.mcp.json');
+      expect(error.details).toContain('inline JSON');
+      expect(error.suggestion).toContain('-c/--config');
     });
 
     test('configInvalidJsonError includes parse error', () => {
@@ -76,10 +77,10 @@ describe('errors', () => {
       expect(error.details).toContain('Unexpected token');
     });
 
-    test('configMissingFieldError mentions mcpServers', () => {
+    test('configMissingFieldError mentions config input', () => {
       const error = configMissingFieldError('/config.json');
       expect(error.type).toBe('CONFIG_MISSING_FIELD');
-      expect(error.message).toContain('mcpServers');
+      expect(error.message).toContain('Config input');
     });
   });
 

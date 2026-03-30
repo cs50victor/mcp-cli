@@ -47,34 +47,42 @@ bun install -g github:cs50victor/mcpx
 
 ## Quick Start
 
-**1. Configure servers** — Create `~/.config/mcp/mcp_servers.json`:
+mcpx resolves servers from the built-in registry and invokes them in memory by default. It no longer reads `.mcp.json`, `mcp.json`, or `MCP_CONFIG_PATH`.
 
-```json
-{
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"]
-    }
-  }
-}
-```
-
-**2. Discover → Inspect → Call**
+**1. Discover available servers**
 
 ```bash
-mcpx                              # List all servers and tools
-mcpx grep "*file*"                # Search tools by pattern
-mcpx filesystem                   # Show server's tools with parameters
-mcpx filesystem/read_file         # Get tool's JSON schema
-mcpx filesystem/read_file '{"path": "./README.md"}'  # Call it
+mcpx
+mcpx -d
+mcpx grep "*time*"
+mcpx registry get filesystem
 ```
 
-Your agent now accesses MCP tools without loading schemas upfront.
+**2. Inspect and call a server with its registry default**
+
+```bash
+mcpx time
+mcpx time/get_current_time
+```
+
+**3. Override runtime-specific servers inline**
+
+Some servers need runtime-specific values such as filesystem paths, repository paths, headers, or tool filters. Pass those overrides inline with `-c`:
+
+```bash
+mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' \
+  filesystem/read_file '{"path":"./README.md"}'
+```
+
+**4. Use daemon mode for stateful servers**
+
+```bash
+mcpx daemon start playwright
+mcpx playwright/browser_navigate '{"url":"https://example.com"}'
+mcpx daemon stop playwright
+```
+
+Your agent now accesses MCP tools without loading schemas upfront or persisting config files.
 
 ## Agent Integration
 
@@ -89,30 +97,63 @@ Add mcpx to your agent's system prompt. See [`examples/system_prompt.md`](./exam
 ## CLI Reference
 
 ```
-mcpx                              List servers and tools
-mcpx grep <pattern>               Search tools (glob pattern)
-mcpx <server>                     Show server tools and parameters
-mcpx <server>/<tool>              Show tool JSON schema
+mcpx                              List available registry servers and tools
+mcpx grep <pattern>               Search registry tool names (glob pattern)
+mcpx <server>                     Show live server tools and parameters
+mcpx <server>/<tool>              Show live tool JSON schema
 mcpx <server>/<tool> <json>       Call tool with arguments
-mcpx config                       Show config file locations
+mcpx daemon <start|stop|status>   Manage persistent connections
+mcpx registry list                List built-in registry servers
+mcpx registry get <name>          Show registry metadata and default config
 ```
 
 | Flag | Effect |
 |------|--------|
 | `-d` | Include descriptions |
 | `-j` | JSON output |
-| `-r` | Raw text output |
-| `-c <path>` | Custom config path |
+| `-c <json>` | Inline config override (flat or wrapped JSON) |
 
-## Configuration
+## Inline Overrides
 
-Config search order:
-1. `-c` / `--config` flag
-2. `MCP_CONFIG_PATH` env var
-3. `./mcp_servers.json`
-4. `~/.config/mcp/mcp_servers.json`
+`-c` / `--config` accepts inline JSON only. It does not accept file paths.
 
-Environment variables: `MCP_TIMEOUT`, `MCP_CONCURRENCY`, `MCP_DEBUG`. Run `mcpx config` to see active config.
+Supported formats:
+
+```json
+{
+  "filesystem": {
+    "command": "bunx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+  }
+}
+```
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "bunx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+Overrides can also set `env`, `cwd`, `headers`, `includeTools`, `allowedTools`, and `disabledTools`.
+
+## Environment
+
+Useful environment variables:
+
+- `MCP_TIMEOUT`
+- `MCP_CONCURRENCY`
+- `MCP_MAX_RETRIES`
+- `MCP_RETRY_DELAY`
+- `MCP_DEBUG`
+- `MCP_STRICT_ENV`
+- `MCP_DAEMON_SOCKET`
+- `MCP_DAEMON_IDLE_MS`
+- `MCPX_REGISTRY_URL`
 
 ## License
 

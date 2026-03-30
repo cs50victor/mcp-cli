@@ -6,8 +6,8 @@ Skills encode procedural knowledge: when and why to use tools. mcpx provides con
 
 | Layer | Responsibility | Example |
 |-------|---------------|---------|
-| **Skill** | Workflow logic, sequencing, presentation | "For PR reviews, first fetch diff, then check CI status, then summarize" |
-| **mcpx** | Tool discovery and execution | `mcpx github/get_pull_request`, `mcpx github/list_checks` |
+| **Skill** | Workflow logic, sequencing, presentation | "For PR reviews, first fetch context, then inspect commits, then summarize" |
+| **mcpx** | Tool discovery and execution | `mcpx github/get_pull_request`, `mcpx github/list_commits` |
 
 Skills teach the agent WHEN and WHY. mcpx handles HOW.
 
@@ -20,13 +20,13 @@ When asked to review a pull request:
 
 1. **Fetch context**
    ```bash
-   mcpx github/get_pull_request '{"owner": "...", "repo": "...", "number": N}'
-   mcpx github/get_pull_request_diff '{"owner": "...", "repo": "...", "number": N}'
+   mcpx github/get_pull_request '<json>'
+   mcpx github/list_commits '<json>'
    ```
 
 2. **Check CI status**
    ```bash
-   mcpx github/list_checks '{"owner": "...", "repo": "...", "ref": "HEAD"}'
+   mcpx github/list_pull_requests '<json>'
    ```
 
 3. **Review structure**
@@ -37,7 +37,7 @@ When asked to review a pull request:
 
 4. **If changes requested**, use:
    ```bash
-   mcpx github/create_review '{"event": "REQUEST_CHANGES", "body": "..."}'
+   mcpx github/create_pending_pull_request_review '<json>'
    ```
 ```
 
@@ -52,18 +52,18 @@ When researching a topic:
 
 1. **Search multiple sources in parallel**
    ```bash
-   mcpx github/search_code '{"query": "..."}' &
-   mcpx web/search '{"query": "..."}' &
-   mcpx arxiv/search '{"query": "..."}' &
+   mcpx github/search_code '<json>' &
+   mcpx exa/web_search_exa '<json>' &
+   mcpx brave-search/brave_web_search '<json>' &
    wait
    ```
 
 2. **Stateful browsing** (sequential, state persists):
    ```bash
-   mcpx daemon start browser && \
-   mcpx browser/navigate '{"url": "..."}' && \
-   mcpx browser/get_text '{"selector": "article"}' && \
-   mcpx daemon stop browser
+   mcpx daemon start playwright && \
+   mcpx playwright/browser_navigate '<json>' && \
+   mcpx playwright/browser_evaluate '<json>' && \
+   mcpx daemon stop playwright
    ```
 
 3. **Synthesize findings**
@@ -83,10 +83,10 @@ One skill can orchestrate multiple MCP servers:
 └─────────────────────────────────────┘
           │         │         │
           ▼         ▼         ▼
-      ┌───────┐ ┌───────┐ ┌───────┐
-      │github │ │browser│ │ arxiv │
-      │ MCP   │ │  MCP  │ │  MCP  │
-      └───────┘ └───────┘ └───────┘
+      ┌────────────┐ ┌────────────┐ ┌──────────────┐
+      │ github MCP │ │playwright  │ │   exa MCP    │
+      │            │ │    MCP     │ │              │
+      └────────────┘ └────────────┘ └──────────────┘
 ```
 
 ## Best Practices

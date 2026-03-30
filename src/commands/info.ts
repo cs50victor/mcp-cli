@@ -26,7 +26,7 @@ export interface InfoOptions {
   target: string; // "server" or "server/tool"
   json: boolean;
   withDescriptions: boolean;
-  configPath?: string;
+  configInput?: string;
 }
 
 function parseTarget(target: string): { server: string; tool?: string } {
@@ -41,7 +41,7 @@ export async function infoCommand(options: InfoOptions): Promise<void> {
   let config: McpServersConfig;
 
   try {
-    config = await loadConfig(options.configPath, { allowEmpty: true });
+    config = await loadConfig(options.configInput, { allowEmpty: true });
   } catch (error) {
     console.error((error as Error).message);
     process.exit(ErrorCode.CLIENT_ERROR);

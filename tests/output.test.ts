@@ -217,7 +217,7 @@ describe('output', () => {
       const output = formatRegistryServer(server);
       expect(output).toContain('filesystem');
       expect(output).toContain('Read/write files');
-      expect(output).toContain('Recommended setup');
+      expect(output).toContain('Default in-memory config');
       expect(output).toContain('npx');
       expect(output).toContain('Tools (6)');
       expect(output).toContain('read_file');

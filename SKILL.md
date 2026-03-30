@@ -12,7 +12,6 @@ Access MCP servers through the command line. MCP enables interaction with extern
 | Command | Output |
 |---------|--------|
 | `mcpx` | List all servers and tool names |
-| `mcpx config` | Show config file locations |
 | `mcpx <server>` | Show tools with parameters |
 | `mcpx <server>/<tool>` | Get tool JSON schema |
 | `mcpx <server>/<tool> '<json>'` | Call tool with arguments |
@@ -27,6 +26,7 @@ Access MCP servers through the command line. MCP enables interaction with extern
 2. **Explore**: `mcpx <server>` → see tools with parameters
 3. **Inspect**: `mcpx <server>/<tool>` → get full JSON input schema
 4. **Execute**: `mcpx <server>/<tool> '<json>'` → run with arguments
+5. **Override**: `mcpx -c '<json>' ...` when a server needs custom args, env, cwd, headers, or tool filters
 
 ## Examples
 
@@ -34,23 +34,27 @@ Access MCP servers through the command line. MCP enables interaction with extern
 # List all servers and tool names
 mcpx
 
+# Inspect registry metadata before overriding a server
+mcpx registry get filesystem
+
 # See all tools with parameters
-mcpx filesystem
+mcpx time
 
 # With descriptions (more verbose)
-mcpx filesystem -d
+mcpx -d
 
 # Get JSON schema for specific tool
-mcpx filesystem/read_file
+mcpx time/get_current_time
 
-# Call the tool
-mcpx filesystem/read_file '{"path": "./README.md"}'
+# Override runtime-specific servers inline
+mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' \
+  filesystem/read_file '{"path":"./README.md"}'
 
 # Search for tools
 mcpx grep "*file*"
 
 # JSON output for parsing
-mcpx filesystem/read_file '{"path": "./README.md"}' --json
+mcpx filesystem/read_file '{"path":"./README.md"}' --json
 
 # Complex JSON with quotes (use '-' for stdin input)
 mcpx server/tool - <<EOF
@@ -70,12 +74,12 @@ mcpx filesystem/search_files '{"path": "src/", "pattern": "*.ts"}' --json | jq -
 | Flag | Purpose |
 |------|---------|
 | `-j, --json` | JSON output for scripting |
-| `-r, --raw` | Raw text content |
 | `-d` | Include descriptions |
+| `-c, --config <json>` | Inline config override |
 
 ## Exit Codes
 
 - `0`: Success
-- `1`: Client error (bad args, missing config)
+- `1`: Client error (bad args, invalid inline config)
 - `2`: Server error (tool failed)
 - `3`: Network error

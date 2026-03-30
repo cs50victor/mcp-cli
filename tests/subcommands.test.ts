@@ -3,14 +3,18 @@ import { join } from 'node:path';
 import { $ } from 'bun';
 
 const CLI_PATH = join(import.meta.dir, '..', 'src', 'index.ts');
+const LOCAL_REGISTRY_PATH = join(import.meta.dir, '..', 'registry', 'registry.json');
 
 describe('subcommand sync', () => {
-  describe('valid subcommands are recognized', () => {
-    test('config', async () => {
-      const result = await $`bun run ${CLI_PATH} config`.nothrow();
-      expect(result.stderr.toString()).not.toContain('Did you mean');
-    });
+  test('no args defaults to list output', async () => {
+    const result =
+      await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH}`.nothrow();
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.toString()).toContain('filesystem');
+    expect(result.stdout.toString()).not.toContain('Usage:');
+  });
 
+  describe('valid subcommands are recognized', () => {
     test('daemon', async () => {
       const result = await $`bun run ${CLI_PATH} daemon`.nothrow();
       expect(result.stderr.toString()).not.toContain('Did you mean');
@@ -22,6 +26,12 @@ describe('subcommand sync', () => {
       expect(result.stderr.toString()).not.toContain('Did you mean');
       expect(result.stderr.toString()).toContain('pattern');
     });
+
+    test('registry', async () => {
+      const result =
+        await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry`.nothrow();
+      expect(result.stderr.toString()).not.toContain('Did you mean');
+    });
   });
 
   describe('typos trigger fuzzy matching', () => {
@@ -29,12 +39,6 @@ describe('subcommand sync', () => {
       const result = await $`bun run ${CLI_PATH} deamon status`.nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain("Did you mean 'daemon'");
-    });
-
-    test('confg -> config', async () => {
-      const result = await $`bun run ${CLI_PATH} confg`.nothrow();
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr.toString()).toContain("Did you mean 'config'");
     });
 
     test('grp -> grep', async () => {
@@ -48,19 +52,20 @@ describe('subcommand sync', () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain("Did you mean 'daemon'");
     });
+
+    test('regsitry -> registry', async () => {
+      const result = await $`bun run ${CLI_PATH} regsitry`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain("Did you mean 'registry'");
+    });
   });
 
   describe('non-typos fall through to server lookup', () => {
     test('xyz (distance > 2)', async () => {
-      const result = await $`bun run ${CLI_PATH} xyz`.nothrow();
+      const result =
+        await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} xyz`.nothrow();
       expect(result.stderr.toString()).not.toContain('Did you mean');
-      // NOTE(victor): without config, fails at config loading; with config, fails at server lookup
       expect(result.exitCode).toBe(1);
-    });
-
-    test('playwright treated as server name', async () => {
-      const result = await $`bun run ${CLI_PATH} playwright`.nothrow();
-      expect(result.stderr.toString()).not.toContain('Did you mean');
     });
   });
 });
