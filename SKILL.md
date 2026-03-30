@@ -12,6 +12,7 @@ Access MCP servers through the command line. MCP enables interaction with extern
 | Command | Output |
 |---------|--------|
 | `mcpx` | List all servers and tool names |
+| `mcpx config` | Show default mode and local config discovery status |
 | `mcpx <server>` | Show tools with parameters |
 | `mcpx <server>/<tool>` | Get tool JSON schema |
 | `mcpx <server>/<tool> '<json>'` | Call tool with arguments |
@@ -26,7 +27,7 @@ Access MCP servers through the command line. MCP enables interaction with extern
 2. **Explore**: `mcpx <server>` → see tools with parameters
 3. **Inspect**: `mcpx <server>/<tool>` → get full JSON input schema
 4. **Execute**: `mcpx <server>/<tool> '<json>'` → run with arguments
-5. **Override**: `mcpx -c '<json>' ...` when a server needs custom args, env, cwd, headers, or tool filters
+5. **Override**: `mcpx -c '<path-or-json>' ...` when a server needs custom args, env, cwd, headers, or tool filters
 
 ## Examples
 
@@ -46,7 +47,7 @@ mcpx -d
 # Get JSON schema for specific tool
 mcpx time/get_current_time
 
-# Override runtime-specific servers inline
+# Use explicit config only for runtime-specific servers
 mcpx -c '{"filesystem":{"command":"bunx","args":["-y","@modelcontextprotocol/server-filesystem","."]}}' \
   filesystem/read_file '{"path":"./README.md"}'
 
@@ -75,11 +76,11 @@ mcpx filesystem/search_files '{"path": "src/", "pattern": "*.ts"}' --json | jq -
 |------|---------|
 | `-j, --json` | JSON output for scripting |
 | `-d` | Include descriptions |
-| `-c, --config <json>` | Inline config override |
+| `-c, --config <path|json>` | Config file path or inline config override |
 
 ## Exit Codes
 
 - `0`: Success
-- `1`: Client error (bad args, invalid inline config)
+- `1`: Client error (bad args, invalid config)
 - `2`: Server error (tool failed)
 - `3`: Network error

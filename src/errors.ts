@@ -142,7 +142,7 @@ export function serverConnectionError(
     cause.includes('allowed directory')
   ) {
     suggestion =
-      "The registry default likely needs runtime-specific values. Override it with -c/--config inline JSON or inspect the notes with 'mcpx registry get <server>'.";
+      "The registry default likely needs runtime-specific values. Override it with -c/--config using a config file or inline JSON, or inspect the notes with 'mcpx registry get <server>'.";
   }
 
   return {

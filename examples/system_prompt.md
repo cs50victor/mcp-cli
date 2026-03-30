@@ -19,7 +19,7 @@ mcpx <server>/<tool> '<json>'     # Call tool with JSON arguments
 ```
 
 Add `-d` to include descriptions (e.g., `mcpx -d`, `mcpx github -d`).
-Use `-c '<json>'` only when a server needs a custom command, args, env, cwd, headers, or tool filters.
+Use `-c '<path-or-json>'` only when a server needs a custom command, args, env, cwd, headers, or tool filters.
 
 ### Workflow
 
@@ -34,7 +34,8 @@ For servers that maintain state across calls:
 ```bash
 mcpx daemon start playwright               # Start persistent connection
 mcpx playwright/browser_navigate '{"url": "..."}'
-mcpx playwright/browser_click '{"selector": "..."}'
+mcpx playwright/browser_snapshot
+mcpx playwright/browser_click '<json>'
 mcpx daemon stop playwright                # Stop when done
 ```
 

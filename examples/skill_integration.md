@@ -6,8 +6,8 @@ Skills encode procedural knowledge: when and why to use tools. mcpx provides con
 
 | Layer | Responsibility | Example |
 |-------|---------------|---------|
-| **Skill** | Workflow logic, sequencing, presentation | "For PR reviews, first fetch context, then inspect commits, then summarize" |
-| **mcpx** | Tool discovery and execution | `mcpx github/get_pull_request`, `mcpx github/list_commits` |
+| **Skill** | Workflow logic, sequencing, presentation | "For PR reviews, first fetch context, inspect changed files, check status, then summarize" |
+| **mcpx** | Tool discovery and execution | `mcpx github/get_pull_request`, `mcpx github/get_pull_request_status` |
 
 Skills teach the agent WHEN and WHY. mcpx handles HOW.
 
@@ -21,12 +21,12 @@ When asked to review a pull request:
 1. **Fetch context**
    ```bash
    mcpx github/get_pull_request '<json>'
-   mcpx github/list_commits '<json>'
+   mcpx github/get_pull_request_files '<json>'
    ```
 
 2. **Check CI status**
    ```bash
-   mcpx github/list_pull_requests '<json>'
+   mcpx github/get_pull_request_status '<json>'
    ```
 
 3. **Review structure**
@@ -37,7 +37,7 @@ When asked to review a pull request:
 
 4. **If changes requested**, use:
    ```bash
-   mcpx github/create_pending_pull_request_review '<json>'
+   mcpx github/create_pull_request_review '<json>'
    ```
 ```
 

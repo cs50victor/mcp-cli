@@ -109,26 +109,36 @@
     {
       "name": "playwright",
       "description": "Browser automation and web scraping",
-      "toolCount": 12,
+      "toolCount": 22,
       "recommended": {
         "command": "bunx",
         "args": ["@playwright/mcp@latest"]
       },
       "tools": [
-        "browser_navigate",
-        "browser_screenshot",
         "browser_click",
-        "browser_fill",
-        "browser_select",
-        "browser_hover",
-        "browser_evaluate",
-        "browser_console",
         "browser_close",
-        "browser_wait",
-        "browser_tab_new",
-        "browser_tab_close"
+        "browser_console_messages",
+        "browser_drag",
+        "browser_evaluate",
+        "browser_file_upload",
+        "browser_fill_form",
+        "browser_handle_dialog",
+        "browser_hover",
+        "browser_navigate",
+        "browser_navigate_back",
+        "browser_network_requests",
+        "browser_press_key",
+        "browser_resize",
+        "browser_run_code",
+        "browser_select_option",
+        "browser_snapshot",
+        "browser_take_screenshot",
+        "browser_type",
+        "browser_wait_for",
+        "browser_tabs",
+        "browser_install"
       ],
-      "notes": "Full browser automation via Playwright. Headless by default."
+      "notes": "Full browser automation via Playwright. Headless by default. Additional coordinate, PDF, and testing tools are available with --caps=vision, --caps=pdf, and --caps=testing."
     },
     {
       "name": "brave-search",
@@ -145,7 +155,7 @@
     {
       "name": "github",
       "description": "GitHub API operations",
-      "toolCount": 20,
+      "toolCount": 26,
       "recommended": {
         "command": "bunx",
         "args": ["-y", "@modelcontextprotocol/server-github"]
@@ -170,7 +180,13 @@
         "get_issue",
         "get_pull_request",
         "list_pull_requests",
-        "create_pending_pull_request_review"
+        "create_pull_request_review",
+        "merge_pull_request",
+        "get_pull_request_files",
+        "get_pull_request_status",
+        "update_pull_request_branch",
+        "get_pull_request_comments",
+        "get_pull_request_reviews"
       ],
       "envVars": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
       "notes": "Requires GITHUB_PERSONAL_ACCESS_TOKEN. Create at https://github.com/settings/tokens"
