@@ -18,7 +18,7 @@ import {
 } from '../config.js';
 import { ErrorCode, formatCliError, registryFetchError } from '../errors.js';
 import { formatJson, formatServerList } from '../output.js';
-import { fetchRegistry, getRegistryUrl } from '../registry.js';
+import { type Registry, fetchRegistry, getRegistryUrl } from '../registry.js';
 
 export interface ListOptions {
   withDescriptions: boolean;
@@ -92,7 +92,7 @@ async function fetchServerTools(
 }
 
 async function listRegistryServers(options: ListOptions): Promise<void> {
-  let registry;
+  let registry: Registry;
   try {
     registry = await fetchRegistry();
   } catch (error) {

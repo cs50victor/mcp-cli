@@ -19,7 +19,7 @@ import {
 import { ErrorCode, formatCliError, registryFetchError } from '../errors.js';
 import { globToRegex } from '../glob.js';
 import { formatJson, formatSearchResults } from '../output.js';
-import { fetchRegistry, getRegistryUrl } from '../registry.js';
+import { type Registry, fetchRegistry, getRegistryUrl } from '../registry.js';
 
 export interface GrepOptions {
   pattern: string;
@@ -108,7 +108,7 @@ async function searchServerTools(
 }
 
 async function grepRegistry(options: GrepOptions): Promise<void> {
-  let registry;
+  let registry: Registry;
   try {
     registry = await fetchRegistry();
   } catch (error) {
