@@ -1,5 +1,5 @@
 {
-  "name": "@vicdotso/mcpx",
+  "name": "@cs50victor/mcpx",
   "version": "1.0.0",
   "description": "A lightweight CLI for interacting with MCP (Model Context Protocol) servers",
   "type": "module",
