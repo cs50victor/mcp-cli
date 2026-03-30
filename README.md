@@ -52,8 +52,8 @@ mcpx resolves servers from the built-in registry and invokes them in memory by d
 **1. Discover available servers**
 
 ```bash
-mcpx
-mcpx -d
+mcpx list
+mcpx list -d
 mcpx grep "*time*"
 mcpx registry get time
 mcpx registry get filesystem
@@ -89,7 +89,8 @@ Add mcpx to your agent's system prompt. See [`examples/system_prompt.md`](./exam
 ## CLI Reference
 
 ```
-mcpx                              List available registry servers and tools
+mcpx                              Show help
+mcpx list                         List available registry servers and tools
 mcpx grep <pattern>               Search registry tool names (glob pattern)
 mcpx <server>                     Show live server tools and parameters
 mcpx <server>/<tool>              Show live tool JSON schema

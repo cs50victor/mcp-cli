@@ -132,17 +132,16 @@ describe('CLI Integration Tests', () => {
   });
 
   describe('list command', () => {
-    test('lists servers and tools', async () => {
+    test('shows help with no arguments', async () => {
       const result = await runCli([]);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('filesystem');
-      // Should contain filesystem tools
-      expect(result.stdout).toMatch(/read_file|list_directory|write_file/);
+      expect(result.stdout).toContain('Usage:');
+      expect(result.stdout).toContain('mcpx list');
     });
 
     test('lists with descriptions using -d flag', async () => {
-      const result = await runCli(['-d']);
+      const result = await runCli(['list', '-d']);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('filesystem');

@@ -74,7 +74,7 @@ interface ParsedArgs {
 
 function parseArgs(args: string[]): ParsedArgs {
   const result: ParsedArgs = {
-    command: 'list',
+    command: 'help',
     json: false,
     withDescriptions: false,
   };
@@ -132,7 +132,7 @@ function parseArgs(args: string[]): ParsedArgs {
 
   // Determine command from positional arguments
   if (positional.length === 0) {
-    result.command = 'list';
+    result.command = 'help';
   } else if (positional[0] === 'list' || positional[0] === 'ls') {
     result.command = 'list';
   } else if (positional[0] === 'config') {
@@ -206,7 +206,7 @@ function printHelp(): void {
 mcpx v${VERSION} - Registry-backed MCP discovery and invocation for AI agents
 
 Usage:
-  mcpx                                     List available servers and tools
+  mcpx                                     Show this help message
   mcpx list                                List available servers and tools
   mcpx ls                                  Alias for list
   mcpx [options] grep <pattern>            Search available tools by glob pattern
@@ -240,8 +240,9 @@ Environment Variables:
   MCPX_REGISTRY_URL        Custom registry URL (default: GitHub-hosted registry)
 
 Examples:
-  mcpx                                    # List available servers
-  mcpx -d                                 # List with descriptions
+  mcpx                                    # Show help
+  mcpx list                               # List available servers
+  mcpx list -d                            # List with descriptions
   mcpx grep "*file*"                      # Search for file tools
   mcpx time                               # Show server tools
   mcpx time/get_current_time              # Show tool schema

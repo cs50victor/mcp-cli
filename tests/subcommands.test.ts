@@ -11,12 +11,12 @@ const LOCAL_REGISTRY_PATH = join(
 );
 
 describe('subcommand sync', () => {
-  test('no args defaults to list output', async () => {
+  test('no args defaults to help output', async () => {
     const result =
       await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH}`.nothrow();
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.toString()).toContain('filesystem');
-    expect(result.stdout.toString()).not.toContain('Usage:');
+    expect(result.stdout.toString()).toContain('Usage:');
+    expect(result.stdout.toString()).toContain('mcpx list');
   });
 
   describe('valid subcommands are recognized', () => {
