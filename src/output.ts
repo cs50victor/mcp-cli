@@ -1,7 +1,7 @@
 import type { ToolInfo } from './client.js';
 import type { ServerConfig } from './config.js';
 import { isHttpServer } from './config.js';
-import { isAgentDefaultServer, type RegistryServer } from './registry.js';
+import type { RegistryServer } from './registry.js';
 
 const colors = {
   reset: '\x1b[0m',
@@ -24,28 +24,21 @@ function color(text: string, colorCode: string): string {
 }
 
 export function formatServerList(
-  servers: Array<{
-    name: string;
-    tools: ToolInfo[];
-    instructions?: string;
-    label?: string;
-  }>,
+  servers: Array<{ name: string; tools: ToolInfo[]; instructions?: string }>,
   withDescriptions: boolean,
 ): string {
   const lines: string[] = [];
 
   for (const server of servers) {
-    const label = server.label ? ` ${color(server.label, colors.yellow)}` : '';
-
     if (withDescriptions && server.instructions) {
       const firstLine = server.instructions.split('\n')[0].trim();
       const truncated =
         firstLine.length > 80 ? `${firstLine.substring(0, 77)}...` : firstLine;
       lines.push(
-        `${color(server.name, colors.bold + colors.cyan)}${label} - ${color(truncated, colors.dim)}`,
+        `${color(server.name, colors.bold + colors.cyan)} - ${color(truncated, colors.dim)}`,
       );
     } else {
-      lines.push(`${color(server.name, colors.bold + colors.cyan)}${label}`);
+      lines.push(color(server.name, colors.bold + colors.cyan));
     }
 
     for (const tool of server.tools) {
@@ -60,16 +53,6 @@ export function formatServerList(
   }
 
   return lines.join('\n').trimEnd();
-}
-
-function getRegistryRecommendationLabel(server: { name: string }):
-  | string
-  | undefined {
-  if (isAgentDefaultServer(server.name)) {
-    return '[default for agents, highly recommended]';
-  }
-
-  return undefined;
 }
 
 export function formatSearchResults(
@@ -204,17 +187,13 @@ export function formatRegistryList(servers: RegistryServer[]): string {
   const maxNameLen = Math.max(...servers.map((s) => s.name.length));
 
   for (const server of servers) {
-    const recommendation = getRegistryRecommendationLabel(server);
     const name = color(
       server.name.padEnd(maxNameLen),
       colors.bold + colors.cyan,
     );
-    const label = recommendation
-      ? ` ${color(recommendation, colors.yellow)}`
-      : '';
     const desc = color(server.description, colors.dim);
     const tools = `${server.toolCount} tool${server.toolCount !== 1 ? 's' : ''}`;
-    lines.push(`${name}${label}  ${desc.padEnd(50)}  ${tools}`);
+    lines.push(`${name}  ${desc.padEnd(50)}  ${tools}`);
   }
 
   return lines.join('\n');
@@ -222,20 +201,11 @@ export function formatRegistryList(servers: RegistryServer[]): string {
 
 export function formatRegistryServer(server: RegistryServer): string {
   const lines: string[] = [];
-  const recommendation = getRegistryRecommendationLabel(server);
 
   lines.push(
-    `${color(server.name, colors.bold + colors.cyan)}${recommendation ? ` ${color(recommendation, colors.yellow)}` : ''} - ${server.description}`,
+    `${color(server.name, colors.bold + colors.cyan)} - ${server.description}`,
   );
   lines.push('');
-
-  if (recommendation) {
-    lines.push(`${color('Recommendation:', colors.bold)}`);
-    lines.push(
-      '  Default for agents. Highly recommended when you want persistent memory across sessions.',
-    );
-    lines.push('');
-  }
 
   lines.push(`${color('Default in-memory config:', colors.bold)}`);
   const configJson = JSON.stringify(

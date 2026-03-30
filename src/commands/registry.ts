@@ -14,7 +14,6 @@ import {
   fetchRegistry,
   findServer,
   getRegistryUrl,
-  sortRegistryServers,
 } from '../registry.js';
 
 export interface RegistryOptions {
@@ -55,7 +54,9 @@ export async function registryCommand(options: RegistryOptions): Promise<void> {
   }
 
   if (options.action === 'list') {
-    const servers = sortRegistryServers(registry.servers);
+    const servers = [...registry.servers].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
 
     if (options.json) {
       console.log(formatJson(servers));

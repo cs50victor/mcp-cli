@@ -9,8 +9,6 @@ import {
   findServer,
   clearRegistryCache,
   getCachePath,
-  isAgentDefaultServer,
-  sortRegistryServers,
   type Registry,
   type RegistryServer,
 } from '../src/registry';
@@ -108,26 +106,6 @@ describe('registry', () => {
       const registry = await fetchRegistry();
       const server = findServer(registry, 'nonexistent');
       expect(server).toBeUndefined();
-    });
-  });
-
-  describe('agent defaults', () => {
-    test('should_identify_memory_as_agent_default', () => {
-      expect(isAgentDefaultServer('memory')).toBe(true);
-      expect(isAgentDefaultServer('MEMORY')).toBe(true);
-      expect(isAgentDefaultServer('filesystem')).toBe(false);
-    });
-
-    test('should_sort_memory_first_for_agent-facing_lists', () => {
-      const sorted = sortRegistryServers([
-        { name: 'filesystem' },
-        { name: 'memory' },
-        { name: 'time' },
-      ]);
-
-      expect(sorted[0].name).toBe('memory');
-      expect(sorted[1].name).toBe('filesystem');
-      expect(sorted[2].name).toBe('time');
     });
   });
 

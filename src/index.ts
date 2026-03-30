@@ -243,7 +243,6 @@ Examples:
   mcpx                                    # List available servers
   mcpx -d                                 # List with descriptions
   mcpx grep "*file*"                      # Search for file tools
-  mcpx memory                             # Recommended default for agent memory
   mcpx time                               # Show server tools
   mcpx time/get_current_time              # Show tool schema
   echo '{"path":"./file"}' | mcpx server/tool -        # Read JSON from stdin
@@ -272,7 +271,6 @@ Daemon Mode (persistent connections for stateful servers):
 
 Default Resolution:
   mcpx resolves servers from the registry and invokes them in memory.
-  For agents, the memory server is the default recommendation for cross-session memory.
 `);
 }
 

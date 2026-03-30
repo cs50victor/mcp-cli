@@ -18,12 +18,7 @@ import {
 } from '../config.js';
 import { ErrorCode, formatCliError, registryFetchError } from '../errors.js';
 import { formatJson, formatServerList } from '../output.js';
-import {
-  fetchRegistry,
-  getRegistryUrl,
-  isAgentDefaultServer,
-  sortRegistryServers,
-} from '../registry.js';
+import { fetchRegistry, getRegistryUrl } from '../registry.js';
 
 export interface ListOptions {
   withDescriptions: boolean;
@@ -110,8 +105,8 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
   }
 
   const disabledPatterns = await loadDisabledTools();
-  const servers = sortRegistryServers(
-    registry.servers.map((server) => {
+  const servers = registry.servers
+    .map((server) => {
       const tools = server.tools
         .filter(
           (toolName) =>
@@ -129,8 +124,8 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
         toolCount: tools.length,
         tools,
       };
-    }),
-  );
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   if (options.json) {
     console.log(
@@ -151,9 +146,6 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
           name: server.name,
           tools: server.tools,
           instructions: server.description,
-          label: isAgentDefaultServer(server.name)
-            ? '[default for agents, highly recommended]'
-            : undefined,
         })),
         options.withDescriptions,
       ),

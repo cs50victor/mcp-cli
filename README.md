@@ -47,7 +47,7 @@ bun install -g github:cs50victor/mcpx
 
 ## Quick Start
 
-mcpx resolves servers from the built-in registry and invokes them in memory by default. For agents, `memory` is the default recommendation and is highly recommended for cross-session memory.
+mcpx resolves servers from the built-in registry and invokes them in memory by default.
 
 **1. Discover available servers**
 
@@ -55,14 +55,13 @@ mcpx resolves servers from the built-in registry and invokes them in memory by d
 mcpx
 mcpx -d
 mcpx grep "*time*"
-mcpx registry get memory
+mcpx registry get time
 mcpx registry get filesystem
 ```
 
 **2. Inspect and call a server with its registry default**
 
 ```bash
-mcpx memory
 mcpx time
 mcpx time/get_current_time
 ```
