@@ -85,4 +85,16 @@ describe('subcommand sync', () => {
       expect(result.exitCode).toBe(1);
     });
   });
+
+  describe('registry misses', () => {
+    test('explain that inline config can still use unregistered MCPs', async () => {
+      const result =
+        await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry get neon`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain(
+        'does not mean mcpx cannot use this MCP server',
+      );
+      expect(result.stderr.toString()).toContain('-c');
+    });
+  });
 });

@@ -15,6 +15,15 @@ export interface CliError {
   suggestion?: string;
 }
 
+const INLINE_CONFIG_GUIDANCE =
+  'A missing registry entry does not mean mcpx cannot use this MCP server. ' +
+  'Provide MCP config inline with -c, or pass a config file. ' +
+  'Example: mcpx -c \'{"mcpServers":{"custom":{"command":"...","args":[]}}}\' custom';
+
+function withInlineConfigGuidance(suggestion: string): string {
+  return `${suggestion} ${INLINE_CONFIG_GUIDANCE}`;
+}
+
 export function formatCliError(error: CliError): string {
   const lines: string[] = [];
 
@@ -85,7 +94,9 @@ export function serverNotFoundError(
     allServers.length > 0 ? allServers.join(', ') : '(none)';
   const sourceInfo = configSource ? ` (from ${configSource})` : '';
 
-  let suggestion = "Run 'mcpx registry list' to see built-in servers.";
+  let suggestion = withInlineConfigGuidance(
+    "Run 'mcpx registry list' to see built-in servers.",
+  );
 
   if (allServers.length > 0) {
     const match = closest(serverName, allServers);
@@ -94,7 +105,9 @@ export function serverNotFoundError(
       const fromRegistry = registryServers.includes(match)
         ? ' (from registry)'
         : '';
-      suggestion = `Did you mean '${match}'${fromRegistry}?`;
+      suggestion = withInlineConfigGuidance(
+        `Did you mean '${match}'${fromRegistry}?`,
+      );
     }
   }
 
@@ -295,13 +308,15 @@ export function registryServerNotFoundError(
         (available.length > 10 ? ` (+${available.length - 10} more)` : '')
       : '(none)';
 
-  let suggestion = "Run 'mcpx registry list' to see all available servers.";
+  let suggestion = withInlineConfigGuidance(
+    "Run 'mcpx registry list' to see all available servers.",
+  );
 
   if (available.length > 0) {
     const match = closest(serverName, available);
     const dist = distance(serverName, match);
     if (dist <= 2) {
-      suggestion = `Did you mean '${match}'?`;
+      suggestion = withInlineConfigGuidance(`Did you mean '${match}'?`);
     }
   }
 
