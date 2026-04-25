@@ -112,12 +112,19 @@ describe('errors', () => {
       ]);
       expect(error.suggestion).not.toContain('Did you mean');
       expect(error.suggestion).toContain('mcpx registry list');
+      expect(error.suggestion).toContain(
+        'does not mean mcpx cannot use this MCP server',
+      );
+      expect(error.suggestion).toContain('-c');
     });
 
     test('serverNotFoundError marks registry suggestions with source', () => {
       const error = serverNotFoundError('filesytem', [], ['filesystem']);
       expect(error.suggestion).toContain("Did you mean 'filesystem'");
       expect(error.suggestion).toContain('from registry');
+      expect(error.suggestion).toContain(
+        'does not mean mcpx cannot use this MCP server',
+      );
     });
 
     test('serverConnectionError detects command not found', () => {
@@ -252,6 +259,10 @@ describe('errors', () => {
       expect(error.details).toContain('filesystem');
       expect(error.details).toContain('fetch');
       expect(error.suggestion).toContain('mcpx registry list');
+      expect(error.suggestion).toContain(
+        'does not mean mcpx cannot use this MCP server',
+      );
+      expect(error.suggestion).toContain('-c');
     });
 
     test('registryServerNotFoundError truncates long lists', () => {
