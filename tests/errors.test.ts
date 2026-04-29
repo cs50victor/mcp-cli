@@ -115,7 +115,8 @@ describe('errors', () => {
       expect(error.suggestion).toContain(
         'does not mean mcpx cannot use this MCP server',
       );
-      expect(error.suggestion).toContain('-c');
+      expect(error.suggestion).toContain('--command');
+      expect(error.suggestion).toContain('--url');
     });
 
     test('serverNotFoundError marks registry suggestions with source', () => {
@@ -262,7 +263,8 @@ describe('errors', () => {
       expect(error.suggestion).toContain(
         'does not mean mcpx cannot use this MCP server',
       );
-      expect(error.suggestion).toContain('-c');
+      expect(error.suggestion).toContain('--command');
+      expect(error.suggestion).toContain('--url');
     });
 
     test('registryServerNotFoundError truncates long lists', () => {

@@ -94,7 +94,58 @@ describe('subcommand sync', () => {
       expect(result.stderr.toString()).toContain(
         'does not mean mcpx cannot use this MCP server',
       );
-      expect(result.stderr.toString()).toContain('-c');
+      expect(result.stderr.toString()).toContain('--command');
+    });
+  });
+
+  describe('inline server flags', () => {
+    test('--command and --url are mutually exclusive', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --command echo --url http://x server`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('mutually exclusive');
+    });
+
+    test('--command and -c are mutually exclusive', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --command echo -c '{}' server`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('mutually exclusive');
+    });
+
+    test('--url and -c are mutually exclusive', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --url http://x -c '{}' server`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('mutually exclusive');
+    });
+
+    test('--arg without --command is an error', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --arg foo server`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('--arg requires --command');
+    });
+
+    test('--env without --command or --url is an error', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --env KEY=VAL server`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain('--env requires --command or --url');
+    });
+
+    test('--command without a value is an error', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --command`.nothrow();
+      expect(result.exitCode).toBe(1);
+    });
+
+    test('valid --command flag synthesizes config', async () => {
+      const result =
+        await $`bun run ${CLI_PATH} --command echo --arg hello myserver`.nothrow();
+      const stderr = result.stderr.toString();
+      expect(stderr).not.toContain('Unknown option');
+      expect(stderr).not.toContain('mutually exclusive');
     });
   });
 });

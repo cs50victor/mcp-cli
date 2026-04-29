@@ -17,8 +17,9 @@ export interface CliError {
 
 const INLINE_CONFIG_GUIDANCE =
   'A missing registry entry does not mean mcpx cannot use this MCP server. ' +
-  'Provide MCP config inline with -c, or pass a config file. ' +
-  'Example: mcpx -c \'{"mcpServers":{"custom":{"command":"...","args":[]}}}\' custom';
+  'Provide server config inline: mcpx --command <cmd> --arg <arg> server/tool, ' +
+  'or mcpx --url <endpoint> server/tool. ' +
+  'For full config JSON, use -c.';
 
 function withInlineConfigGuidance(suggestion: string): string {
   return `${suggestion} ${INLINE_CONFIG_GUIDANCE}`;

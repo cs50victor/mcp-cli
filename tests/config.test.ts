@@ -12,6 +12,7 @@ import {
   findDisabledMatch,
   isToolAllowedByServerConfig,
   computeConfigHash,
+  buildAdHocConfig,
 } from '../src/config';
 import { clearRegistryCache } from '../src/registry';
 
@@ -585,6 +586,71 @@ describe('config', () => {
     test('returns a short hex hash', () => {
       const hash = computeConfigHash({ command: 'echo' });
       expect(hash).toMatch(/^[a-f0-9]{16}$/);
+    });
+  });
+
+  describe('buildAdHocConfig', () => {
+    test('builds stdio config from command and args', () => {
+      const config = buildAdHocConfig('neon', {
+        command: 'uvx',
+        args: ['neon-mcp-server'],
+      });
+      expect(config.mcpServers.neon).toEqual({
+        command: 'uvx',
+        args: ['neon-mcp-server'],
+      });
+    });
+
+    test('builds stdio config with command only', () => {
+      const config = buildAdHocConfig('server', { command: 'echo' });
+      expect(config.mcpServers.server).toEqual({ command: 'echo' });
+    });
+
+    test('builds http config from url', () => {
+      const config = buildAdHocConfig('remote', {
+        url: 'https://example.com/mcp',
+      });
+      expect(config.mcpServers.remote).toEqual({
+        url: 'https://example.com/mcp',
+      });
+    });
+
+    test('parses env pairs into env object', () => {
+      const config = buildAdHocConfig('s', {
+        command: 'cmd',
+        envPairs: ['API_KEY=abc123', 'SECRET=xyz'],
+      });
+      expect(config.mcpServers.s).toEqual({
+        command: 'cmd',
+        env: { API_KEY: 'abc123', SECRET: 'xyz' },
+      });
+    });
+
+    test('handles equals signs in env values', () => {
+      const config = buildAdHocConfig('s', {
+        command: 'cmd',
+        envPairs: ['TOKEN=abc=def=ghi'],
+      });
+      expect(config.mcpServers.s).toEqual({
+        command: 'cmd',
+        env: { TOKEN: 'abc=def=ghi' },
+      });
+    });
+
+    test('sets _configSource to inline-flags', () => {
+      const config = buildAdHocConfig('s', { command: 'echo' });
+      expect(config._configSource).toBe('inline-flags');
+    });
+
+    test('builds http config with env pairs', () => {
+      const config = buildAdHocConfig('remote', {
+        url: 'https://example.com/mcp',
+        envPairs: ['TOKEN=secret'],
+      });
+      expect(config.mcpServers.remote).toEqual({
+        url: 'https://example.com/mcp',
+        env: { TOKEN: 'secret' },
+      });
     });
   });
 });

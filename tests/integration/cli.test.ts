@@ -114,7 +114,9 @@ describe('CLI Integration Tests', () => {
       expect(stdout).toContain('Usage:');
       expect(stdout).toContain('Options:');
       expect(stdout).not.toContain('mcpx [options] config');
-      expect(stdout).not.toContain('-c, --config');
+      expect(stdout).toContain('-c, --config');
+      expect(stdout).toContain('--command');
+      expect(stdout).toContain('--url');
       expect(stdout).not.toContain('MCP_CONFIG_PATH');
       expect(stdout).not.toContain('MCPX_USE_LOCAL_CONFIG');
       expect(stdout).not.toContain('.mcp.json');
