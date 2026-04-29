@@ -13,6 +13,7 @@ import {
   DEFAULT_RETRY_DELAY_MS,
   DEFAULT_TIMEOUT_SECONDS,
   type McpServersConfig,
+  buildAdHocConfig,
   loadConfig,
 } from './config.js';
 
@@ -65,6 +66,10 @@ interface ParsedArgs {
   json: boolean;
   withDescriptions: boolean;
   configInput?: string;
+  inlineCommand?: string;
+  inlineArgs?: string[];
+  inlineEnvs?: string[];
+  inlineUrl?: string;
   daemonAction?: 'start' | 'stop' | 'status';
   daemonServers?: string[];
   daemonForce?: boolean;
@@ -115,6 +120,40 @@ function parseArgs(args: string[]): ParsedArgs {
           process.exit(ErrorCode.CLIENT_ERROR);
         }
         break;
+
+      case '--command': {
+        const val = args[++i];
+        if (!val) {
+          console.error(
+            formatCliError(missingArgumentError('--command', 'executable')),
+          );
+          process.exit(ErrorCode.CLIENT_ERROR);
+        }
+        result.inlineCommand = val;
+        break;
+      }
+
+      case '--arg':
+        if (!result.inlineArgs) result.inlineArgs = [];
+        result.inlineArgs.push(args[++i]);
+        break;
+
+      case '--env':
+        if (!result.inlineEnvs) result.inlineEnvs = [];
+        result.inlineEnvs.push(args[++i]);
+        break;
+
+      case '--url': {
+        const val = args[++i];
+        if (!val) {
+          console.error(
+            formatCliError(missingArgumentError('--url', 'endpoint')),
+          );
+          process.exit(ErrorCode.CLIENT_ERROR);
+        }
+        result.inlineUrl = val;
+        break;
+      }
 
       case '--force':
         result.daemonForce = true;
@@ -223,6 +262,13 @@ Options:
   -v, --version            Show version number
   -j, --json               Output as JSON (for scripting)
   -d, --with-descriptions  Include tool descriptions
+  -c, --config <json|path> Provide full MCP config as JSON or file path
+
+Inline Server (ad-hoc, no registry or config file needed):
+  --command <cmd>          Stdio server executable
+  --arg <value>            Server argument (repeatable, order preserved)
+  --env <KEY=VALUE>        Server environment variable (repeatable)
+  --url <endpoint>         HTTP server endpoint (mutually exclusive with --command)
 
 Output:
   stdout                   Tool results and data (default: text, --json for JSON)
@@ -247,6 +293,12 @@ Examples:
   mcpx time                               # Show server tools
   mcpx time/get_current_time              # Show tool schema
   echo '{"path":"./file"}' | mcpx server/tool -        # Read JSON from stdin
+
+Inline Server (use any MCP server without registry or config file):
+  mcpx --command uvx --arg example-mcp-server myserver            # List tools
+  mcpx --command uvx --arg example-mcp-server myserver/some_tool  # Call tool
+  mcpx --url https://example.com/mcp remote                      # HTTP server
+  mcpx --command cmd --env API_KEY=xxx --arg srv server/tool      # With env var
 
 Registry (discover MCP servers):
   mcpx registry                           # Show registry help
@@ -275,8 +327,74 @@ Default Resolution:
 `);
 }
 
+function validateAndSynthesizeInlineFlags(args: ParsedArgs): void {
+  const hasInline = args.inlineCommand || args.inlineUrl;
+
+  if (args.inlineCommand && args.inlineUrl) {
+    console.error(
+      formatCliError({
+        code: ErrorCode.CLIENT_ERROR,
+        type: 'INVALID_FLAGS',
+        message: '--command and --url are mutually exclusive',
+        suggestion:
+          'Use --command for stdio servers or --url for HTTP servers, not both',
+      }),
+    );
+    process.exit(ErrorCode.CLIENT_ERROR);
+  }
+
+  if (hasInline && args.configInput) {
+    console.error(
+      formatCliError({
+        code: ErrorCode.CLIENT_ERROR,
+        type: 'INVALID_FLAGS',
+        message: '--command/--url and -c are mutually exclusive',
+        suggestion:
+          'Use --command/--url flags for inline config, or -c for JSON/file config, not both',
+      }),
+    );
+    process.exit(ErrorCode.CLIENT_ERROR);
+  }
+
+  if (args.inlineArgs?.length && !args.inlineCommand) {
+    console.error(
+      formatCliError({
+        code: ErrorCode.CLIENT_ERROR,
+        type: 'INVALID_FLAGS',
+        message: '--arg requires --command',
+        suggestion: 'Provide --command <executable> when using --arg',
+      }),
+    );
+    process.exit(ErrorCode.CLIENT_ERROR);
+  }
+
+  if (args.inlineEnvs?.length && !hasInline) {
+    console.error(
+      formatCliError({
+        code: ErrorCode.CLIENT_ERROR,
+        type: 'INVALID_FLAGS',
+        message: '--env requires --command or --url',
+        suggestion: 'Provide --command or --url when using --env',
+      }),
+    );
+    process.exit(ErrorCode.CLIENT_ERROR);
+  }
+
+  if (hasInline) {
+    const serverName = args.target?.split('/')[0] || 'inline';
+    const config = buildAdHocConfig(serverName, {
+      command: args.inlineCommand,
+      args: args.inlineArgs,
+      envPairs: args.inlineEnvs,
+      url: args.inlineUrl,
+    });
+    args.configInput = JSON.stringify(config);
+  }
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  validateAndSynthesizeInlineFlags(args);
 
   switch (args.command) {
     case 'help':

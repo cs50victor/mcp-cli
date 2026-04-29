@@ -625,6 +625,43 @@ function sortObjectKeys(obj: unknown): unknown {
   return sorted;
 }
 
+export function buildAdHocConfig(
+  serverName: string,
+  options: {
+    command?: string;
+    args?: string[];
+    envPairs?: string[];
+    url?: string;
+  },
+): McpServersConfig {
+  const serverConfig: Partial<StdioServerConfig & HttpServerConfig> = {};
+
+  if (options.command) {
+    serverConfig.command = options.command;
+    if (options.args?.length) {
+      serverConfig.args = options.args;
+    }
+  } else if (options.url) {
+    serverConfig.url = options.url;
+  }
+
+  if (options.envPairs?.length) {
+    const env: Record<string, string> = {};
+    for (const pair of options.envPairs) {
+      const eqIndex = pair.indexOf('=');
+      if (eqIndex > 0) {
+        env[pair.slice(0, eqIndex)] = pair.slice(eqIndex + 1);
+      }
+    }
+    serverConfig.env = env;
+  }
+
+  return {
+    mcpServers: { [serverName]: serverConfig as unknown as ServerConfig },
+    _configSource: 'inline-flags',
+  };
+}
+
 export function computeConfigHash(config: ServerConfig): string {
   const normalized = sortObjectKeys(config);
   const json = JSON.stringify(normalized);
