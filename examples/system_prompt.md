@@ -13,7 +13,6 @@ Access MCP servers via the `mcpx` CLI. MCP tools interact with external systems:
 ```bash
 mcpx                              # Show help
 mcpx list                         # List all servers and tools
-mcpx grep "<pattern>"             # Search tools by name (glob pattern)
 mcpx <server>                     # Show server tools with parameters
 mcpx <server>/<tool>              # Get tool JSON schema
 mcpx <server>/<tool> '<json>'     # Call tool with JSON arguments
@@ -23,7 +22,7 @@ Add `-d` to include descriptions (e.g., `mcpx list -d`, `mcpx github -d`).
 
 ### Workflow
 
-1. **Discover**: `mcpx list` or `mcpx grep "<pattern>"` to find tools
+1. **Discover**: `mcpx list` to find servers and tools
 2. **Inspect**: `mcpx <server>/<tool>` to get the JSON schema
 3. **Execute**: `mcpx <server>/<tool> '<json>'` with correct arguments
 

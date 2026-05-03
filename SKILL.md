@@ -16,7 +16,6 @@ Access MCP servers through the command line. MCP enables interaction with extern
 | `mcpx <server>` | Show tools with parameters |
 | `mcpx <server>/<tool>` | Get tool JSON schema |
 | `mcpx <server>/<tool> '<json>'` | Call tool with arguments |
-| `mcpx grep "<glob>"` | Search tools by name |
 | `mcpx daemon start\|stop` | Manage persistent connections (for stateful servers) |
 
 **Add `-d` to include descriptions** (e.g., `mcpx filesystem -d`)
@@ -45,9 +44,6 @@ mcpx list -d
 
 # Get JSON schema for specific tool
 mcpx time/get_current_time
-
-# Search for tools
-mcpx grep "*file*"
 
 # JSON output for parsing
 mcpx filesystem/read_file '{"path":"./README.md"}' --json

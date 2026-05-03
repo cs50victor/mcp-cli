@@ -31,12 +31,6 @@ describe('subcommand sync', () => {
       expect(result.stderr.toString()).toContain('start|stop|status');
     });
 
-    test('grep', async () => {
-      const result = await $`bun run ${CLI_PATH} grep`.nothrow();
-      expect(result.stderr.toString()).not.toContain('Did you mean');
-      expect(result.stderr.toString()).toContain('pattern');
-    });
-
     test('registry', async () => {
       const result =
         await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry`.nothrow();
@@ -58,10 +52,11 @@ describe('subcommand sync', () => {
       expect(result.stderr.toString()).toContain("Did you mean 'daemon'");
     });
 
-    test('grp -> grep', async () => {
+    test('grp falls through to server lookup', async () => {
       const result = await $`bun run ${CLI_PATH} grp pattern`.nothrow();
       expect(result.exitCode).toBe(1);
-      expect(result.stderr.toString()).toContain("Did you mean 'grep'");
+      expect(result.stderr.toString()).not.toContain("Did you mean 'grep'");
+      expect(result.stderr.toString()).toContain('Server "grp" not found');
     });
 
     test('daemn -> daemon', async () => {

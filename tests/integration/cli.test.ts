@@ -162,37 +162,13 @@ describe('CLI Integration Tests', () => {
     });
   });
 
-  describe('grep command', () => {
-    test('searches tools by pattern', async () => {
+  describe('removed grep command', () => {
+    test('treats grep as a server name', async () => {
       const result = await runCli(['grep', '*file*']);
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toMatch(/filesystem\/(read_file|write_file)/);
-    });
-
-    test('searches with descriptions', async () => {
-      const result = await runCli(['grep', '*directory*', '-d']);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('filesystem');
-    });
-
-    test('outputs JSON with --json flag', async () => {
-      const result = await runCli(['grep', '*read*', '--json']);
-
-      expect(result.exitCode).toBe(0);
-      const parsed = JSON.parse(result.stdout);
-      expect(Array.isArray(parsed)).toBe(true);
-      expect(parsed.length).toBeGreaterThan(0);
-      expect(parsed[0].server).toBeDefined();
-      expect(parsed[0].tool).toBeDefined();
-    });
-
-    test('shows message for no matches', async () => {
-      const result = await runCli(['grep', '*nonexistent_xyz_123*']);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('No tools found');
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Server "grep" not found');
+      expect(result.stderr).not.toContain('No tools found');
     });
   });
 
@@ -465,12 +441,4 @@ describe('HTTP Transport Integration Tests', () => {
     });
   });
 
-  describe('grep command with HTTP server', () => {
-    test('searches HTTP server tools', async () => {
-      const result = await runCli(['grep', '*']);
-
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('deepwiki');
-    });
-  });
 });

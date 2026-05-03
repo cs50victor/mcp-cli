@@ -5,7 +5,6 @@
 import { describe, test, expect } from 'bun:test';
 import {
   formatServerList,
-  formatSearchResults,
   formatToolSchema,
   formatToolResult,
   formatJson,
@@ -61,46 +60,6 @@ describe('output', () => {
       expect(withoutDesc).not.toContain('A test tool');
     });
 
-  });
-
-  describe('formatSearchResults', () => {
-    test('formats search results', () => {
-      const results = [
-        {
-          server: 'github',
-          tool: { name: 'search', description: 'Search', inputSchema: {} },
-        },
-        {
-          server: 'fs',
-          tool: { name: 'find', description: 'Find files', inputSchema: {} },
-        },
-      ];
-
-      const output = formatSearchResults(results, false);
-      expect(output).toContain('github');
-      expect(output).toContain('search');
-      expect(output).toContain('fs');
-      expect(output).toContain('find');
-    });
-
-    test('includes descriptions when requested', () => {
-      const results = [
-        {
-          server: 'test',
-          tool: {
-            name: 'tool',
-            description: 'Tool description',
-            inputSchema: {},
-          },
-        },
-      ];
-
-      const withDesc = formatSearchResults(results, true);
-      expect(withDesc).toContain('Tool description');
-
-      const withoutDesc = formatSearchResults(results, false);
-      expect(withoutDesc).not.toContain('Tool description');
-    });
   });
 
   describe('formatToolSchema', () => {
