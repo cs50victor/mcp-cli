@@ -3,7 +3,6 @@
 import { closest, distance } from 'fastest-levenshtein';
 import { callCommand } from './commands/call.js';
 import { configCommand } from './commands/config.js';
-import { grepCommand } from './commands/grep.js';
 import { infoCommand } from './commands/info.js';
 import { listCommand } from './commands/list.js';
 import { registryCommand } from './commands/registry.js';
@@ -32,27 +31,13 @@ import {
 import { VERSION } from './version.js';
 
 /** Positional subcommands - used for parsing and typo detection */
-const SUBCOMMANDS = [
-  'config',
-  'daemon',
-  'grep',
-  'list',
-  'ls',
-  'registry',
-] as const;
+const SUBCOMMANDS = ['config', 'daemon', 'list', 'ls', 'registry'] as const;
 
-const VISIBLE_SUBCOMMANDS = [
-  'daemon',
-  'grep',
-  'list',
-  'ls',
-  'registry',
-] as const;
+const VISIBLE_SUBCOMMANDS = ['daemon', 'list', 'ls', 'registry'] as const;
 
 interface ParsedArgs {
   command:
     | 'list'
-    | 'grep'
     | 'info'
     | 'call'
     | 'config'
@@ -61,7 +46,6 @@ interface ParsedArgs {
     | 'help'
     | 'version';
   target?: string;
-  pattern?: string;
   args?: string;
   json: boolean;
   withDescriptions: boolean;
@@ -190,13 +174,6 @@ function parseArgs(args: string[]): ParsedArgs {
     if (positional.length > 2) {
       result.daemonServers = positional.slice(2);
     }
-  } else if (positional[0] === 'grep') {
-    result.command = 'grep';
-    result.pattern = positional[1];
-    if (!result.pattern) {
-      console.error(formatCliError(missingArgumentError('grep', 'pattern')));
-      process.exit(ErrorCode.CLIENT_ERROR);
-    }
   } else if (positional[0] === 'registry') {
     result.command = 'registry';
     const action = positional[1];
@@ -248,7 +225,6 @@ Usage:
   mcpx                                     Show this help message
   mcpx list                                List available servers and tools
   mcpx ls                                  Alias for list
-  mcpx [options] grep <pattern>            Search available tools by glob pattern
   mcpx [options] <server>                  Show server tools and parameters
   mcpx [options] <server>/<tool>           Show tool schema and description
   mcpx [options] <server>/<tool> <json>    Call tool with arguments
@@ -289,7 +265,6 @@ Examples:
   mcpx                                    # Show help
   mcpx list                               # List available servers
   mcpx list -d                            # List with descriptions
-  mcpx grep "*file*"                      # Search for file tools
   mcpx time                               # Show server tools
   mcpx time/get_current_time              # Show tool schema
   echo '{"path":"./file"}' | mcpx server/tool -        # Read JSON from stdin
@@ -407,15 +382,6 @@ async function main(): Promise<void> {
 
     case 'list':
       await listCommand({
-        withDescriptions: args.withDescriptions,
-        json: args.json,
-        configInput: args.configInput,
-      });
-      break;
-
-    case 'grep':
-      await grepCommand({
-        pattern: args.pattern ?? '',
         withDescriptions: args.withDescriptions,
         json: args.json,
         configInput: args.configInput,

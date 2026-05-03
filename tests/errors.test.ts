@@ -219,10 +219,10 @@ describe('errors', () => {
     });
 
     test('missingArgumentError includes command and argument', () => {
-      const error = missingArgumentError('grep', 'pattern');
+      const error = missingArgumentError('daemon', 'start|stop|status');
       expect(error.type).toBe('MISSING_ARGUMENT');
-      expect(error.message).toContain('grep');
-      expect(error.message).toContain('pattern');
+      expect(error.message).toContain('daemon');
+      expect(error.message).toContain('start|stop|status');
     });
   });
 

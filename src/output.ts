@@ -55,24 +55,6 @@ export function formatServerList(
   return lines.join('\n').trimEnd();
 }
 
-export function formatSearchResults(
-  results: Array<{ server: string; tool: ToolInfo }>,
-  withDescriptions: boolean,
-): string {
-  const lines: string[] = [];
-
-  for (const result of results) {
-    const path = `${color(result.server, colors.cyan)}/${color(result.tool.name, colors.green)}`;
-    if (withDescriptions && result.tool.description) {
-      lines.push(`${path} - ${color(result.tool.description, colors.dim)}`);
-    } else {
-      lines.push(path);
-    }
-  }
-
-  return lines.join('\n');
-}
-
 export function formatServerDetails(
   serverName: string,
   config: ServerConfig,
