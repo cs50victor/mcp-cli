@@ -1,5 +1,23 @@
 # mcpx
 
+## Repository Ownership
+
+This repository is maintained independently at `cs50victor/mcpx`. It is not an
+upstream contribution branch for `philschmid/mcp-cli`.
+
+For GitHub operations in this checkout, always target `cs50victor/mcpx`
+explicitly:
+
+```bash
+gh pr create -R cs50victor/mcpx ...
+gh pr view -R cs50victor/mcpx ...
+gh pr close -R cs50victor/mcpx ...
+```
+
+Never let `gh` infer the PR repository from remotes or fork metadata in this
+checkout. Do not open PRs against `philschmid/mcp-cli` unless the user explicitly
+asks to contribute upstream.
+
 ## Registry Update Protocol
 
 `registry/registry.json` is the source of truth for MCP server discovery. Agents depend on accurate data.
@@ -21,10 +39,8 @@ git clone --depth 1 <repo-url> /tmp/<repo-name>
 
 ### 3. Find Tool Definitions
 
-```bash
-Grep: registerTool|name.*tool|\.tool\(
-Glob: **/*-tools.ts or **/tools/*.ts
-```
+Do not add static tool lists or tool counts to registry entries. MCP tools are
+discovered at runtime by querying the server.
 
 ### 4. Read the README
 
@@ -43,12 +59,10 @@ Check for:
 {
   "name": "server-name",
   "description": "What it does",
-  "toolCount": 5,
   "recommended": {
     "command": "bunx",
     "args": ["-y", "<package>", "<required-args>"]
   },
-  "tools": ["tool1", "tool2"],
   "envVars": ["API_KEY"],
   "notes": "Replace <placeholder> with X. Optional: --flag for Y."
 }
@@ -57,10 +71,9 @@ Check for:
 ### Standards
 
 1. Use `bunx`, not `npx`
-2. List every tool
-3. Match `toolCount` to array length
-4. Explain placeholders in notes
-5. For remote servers, use `mcp-remote`:
+2. Do not include static `tools` or `toolCount` fields
+3. Explain placeholders in notes
+4. For remote servers, use `mcp-remote`:
    ```json
    "args": ["-y", "mcp-remote", "https://example.com/mcp"]
    ```
@@ -70,8 +83,7 @@ Check for:
 1. WebFetch docs - got overview
 2. WebSearch - found project scoping requirement
 3. Clone repo to `/tmp/supabase-mcp`
-4. Glob `**/*-tools.ts` - 8 tool files
-5. Read README - 32 tools across 8 feature groups
-6. Note URL params: `project_ref`, `read_only`, `features`
+4. Read README and config docs
+5. Note URL params: `project_ref`, `read_only`, `features`
 
-Result: accurate entry with project scoping in URL.
+Result: accurate entry with project scoping in URL and no static tool metadata.
