@@ -166,6 +166,9 @@ export function formatError(message: string): string {
 
 export function formatRegistryList(servers: RegistryServer[]): string {
   const lines: string[] = [];
+  if (servers.length === 0) {
+    return '';
+  }
   const maxNameLen = Math.max(...servers.map((s) => s.name.length));
 
   for (const server of servers) {
@@ -174,8 +177,7 @@ export function formatRegistryList(servers: RegistryServer[]): string {
       colors.bold + colors.cyan,
     );
     const desc = color(server.description, colors.dim);
-    const tools = `${server.toolCount} tool${server.toolCount !== 1 ? 's' : ''}`;
-    lines.push(`${name}  ${desc.padEnd(50)}  ${tools}`);
+    lines.push(`${name}  ${desc}`);
   }
 
   return lines.join('\n');
@@ -212,8 +214,8 @@ export function formatRegistryServer(server: RegistryServer): string {
     lines.push('');
   }
 
-  lines.push(`${color(`Tools (${server.toolCount}):`, colors.bold)}`);
-  lines.push(`  ${server.tools.join(', ')}`);
+  lines.push(`${color('Use:', colors.bold)}`);
+  lines.push(`  mcpx ${server.name}`);
 
   if (server.envVars && server.envVars.length > 0) {
     lines.push('');

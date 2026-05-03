@@ -138,16 +138,14 @@ describe('output', () => {
         {
           name: 'filesystem',
           description: 'Read/write files',
-          toolCount: 6,
           recommended: { command: 'npx', args: ['-y', 'server'] },
-          tools: ['read', 'write'],
         },
       ];
 
       const output = formatRegistryList(servers);
       expect(output).toContain('filesystem');
       expect(output).toContain('Read/write files');
-      expect(output).toContain('6 tools');
+      expect(output).not.toContain('tools');
     });
   });
 
@@ -156,12 +154,10 @@ describe('output', () => {
       const server = {
         name: 'filesystem',
         description: 'Read/write files and directories',
-        toolCount: 6,
         recommended: {
           command: 'npx',
           args: ['-y', '@modelcontextprotocol/server-filesystem', '/path'],
         },
-        tools: ['read_file', 'write_file', 'list_directory'],
         notes: 'Replace /path with your directory',
       };
 
@@ -170,8 +166,8 @@ describe('output', () => {
       expect(output).toContain('Read/write files');
       expect(output).toContain('Default in-memory config');
       expect(output).toContain('npx');
-      expect(output).toContain('Tools (6)');
-      expect(output).toContain('read_file');
+      expect(output).toContain('Use:');
+      expect(output).toContain('mcpx filesystem');
       expect(output).toContain('Notes');
       expect(output).toContain('Replace /path');
     });
@@ -180,9 +176,7 @@ describe('output', () => {
       const server = {
         name: 'brave-search',
         description: 'Web search',
-        toolCount: 2,
         recommended: { command: 'npx', args: ['-y', 'brave'] },
-        tools: ['search'],
         envVars: ['BRAVE_API_KEY'],
       };
 
@@ -195,9 +189,7 @@ describe('output', () => {
       const server = {
         name: 'git',
         description: 'Git operations',
-        toolCount: 12,
         recommended: { command: 'uvx', args: ['mcp-server-git'] },
-        tools: ['git_status'],
         alternatives: [
           { name: 'npm', command: 'npx', args: ['-y', '@mcp/server-git'] },
         ],

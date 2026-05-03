@@ -12,7 +12,7 @@ Access MCP servers through the command line. MCP enables interaction with extern
 | Command | Output |
 |---------|--------|
 | `mcpx` | Show help |
-| `mcpx list` | List all servers and tool names |
+| `mcpx list` | List all registry servers |
 | `mcpx <server>` | Show tools with parameters |
 | `mcpx <server>/<tool>` | Get tool JSON schema |
 | `mcpx <server>/<tool> '<json>'` | Call tool with arguments |
@@ -22,7 +22,7 @@ Access MCP servers through the command line. MCP enables interaction with extern
 
 ## Workflow
 
-1. **Discover**: `mcpx list` → see available servers and tools
+1. **Discover**: `mcpx list` → see available servers
 2. **Explore**: `mcpx <server>` → see tools with parameters
 3. **Inspect**: `mcpx <server>/<tool>` → get full JSON input schema
 4. **Execute**: `mcpx <server>/<tool> '<json>'` → run with arguments
@@ -30,7 +30,7 @@ Access MCP servers through the command line. MCP enables interaction with extern
 ## Examples
 
 ```bash
-# List all servers and tool names
+# List all registry servers
 mcpx list
 
 # Inspect registry metadata before overriding a server

@@ -89,7 +89,7 @@ Add mcpx to your agent's system prompt. See [`examples/system_prompt.md`](./exam
 
 ```
 mcpx                              Show help
-mcpx list                         List available registry servers and tools
+mcpx list                         List available registry servers
 mcpx <server>                     Show live server tools and parameters
 mcpx <server>/<tool>              Show live tool JSON schema
 mcpx <server>/<tool> <json>       Call tool with arguments

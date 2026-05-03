@@ -5,7 +5,6 @@ import { join } from 'node:path';
 export interface RegistryServer {
   name: string;
   description: string;
-  toolCount: number;
   recommended: {
     command: string;
     args: string[];
@@ -15,7 +14,6 @@ export interface RegistryServer {
     command: string;
     args: string[];
   }>;
-  tools: string[];
   envVars?: string[];
   notes?: string;
 }
@@ -24,6 +22,11 @@ export interface Registry {
   version: number;
   servers: RegistryServer[];
 }
+
+type LegacyRegistryServer = RegistryServer & {
+  tools?: unknown;
+  toolCount?: unknown;
+};
 
 const DEFAULT_REGISTRY_URL =
   'https://raw.githubusercontent.com/cs50victor/mcpx/dev/registry/registry.json';
@@ -56,7 +59,7 @@ async function isCacheFresh(): Promise<boolean> {
 async function readDiskCache(): Promise<Registry | null> {
   try {
     const content = await readFile(getCachePath(), 'utf-8');
-    return JSON.parse(content) as Registry;
+    return normalizeRegistry(JSON.parse(content) as Registry);
   } catch {
     return null;
   }
@@ -66,10 +69,22 @@ async function writeDiskCache(registry: Registry): Promise<void> {
   try {
     const cachePath = getCachePath();
     await mkdir(join(homedir(), '.cache', 'mcpx'), { recursive: true });
-    await writeFile(cachePath, JSON.stringify(registry));
+    await writeFile(cachePath, JSON.stringify(normalizeRegistry(registry)));
   } catch {
     // NOTE(victor): silently ignore cache write failures - cache is optional optimization
   }
+}
+
+function normalizeRegistryServer(server: LegacyRegistryServer): RegistryServer {
+  const { tools: _tools, toolCount: _toolCount, ...normalized } = server;
+  return normalized;
+}
+
+function normalizeRegistry(registry: Registry): Registry {
+  return {
+    ...registry,
+    servers: registry.servers.map((server) => normalizeRegistryServer(server)),
+  };
 }
 
 export async function fetchRegistry(): Promise<Registry> {
@@ -88,7 +103,7 @@ export async function fetchRegistry(): Promise<Registry> {
         ? url
         : join(process.cwd(), url);
     const content = await readFile(filePath, 'utf-8');
-    const registry = JSON.parse(content) as Registry;
+    const registry = normalizeRegistry(JSON.parse(content) as Registry);
     memoryCache = registry;
     return registry;
   }
@@ -110,7 +125,7 @@ export async function fetchRegistry(): Promise<Registry> {
         `Failed to fetch registry: ${response.status} ${response.statusText}`,
       );
     }
-    const registry = (await response.json()) as Registry;
+    const registry = normalizeRegistry((await response.json()) as Registry);
 
     // 5. Write to disk cache
     await writeDiskCache(registry);

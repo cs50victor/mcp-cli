@@ -4,7 +4,6 @@
     {
       "name": "filesystem",
       "description": "Read/write files and directories",
-      "toolCount": 11,
       "recommended": {
         "command": "bunx",
         "args": [
@@ -13,230 +12,153 @@
           "/path/to/allowed/dir"
         ]
       },
-      "tools": [
-        "read_file",
-        "read_multiple_files",
-        "write_file",
-        "edit_file",
-        "create_directory",
-        "list_directory",
-        "directory_tree",
-        "move_file",
-        "search_files",
-        "get_file_info",
-        "list_allowed_directories"
-      ],
       "notes": "Replace /path/to/allowed/dir with the directory you want to expose. Multiple directories can be specified."
     },
     {
       "name": "fetch",
       "description": "Make HTTP requests and fetch web content",
-      "toolCount": 1,
       "recommended": {
         "command": "uvx",
-        "args": ["mcp-server-fetch"]
+        "args": [
+          "mcp-server-fetch"
+        ]
       },
-      "tools": ["fetch"],
       "notes": "Fetches URLs and returns content. Supports various content types."
     },
     {
       "name": "git",
       "description": "Git repository operations",
-      "toolCount": 12,
       "recommended": {
         "command": "uvx",
-        "args": ["mcp-server-git", "--repository", "/path/to/repo"]
+        "args": [
+          "mcp-server-git",
+          "--repository",
+          "/path/to/repo"
+        ]
       },
-      "tools": [
-        "git_status",
-        "git_diff_unstaged",
-        "git_diff_staged",
-        "git_diff",
-        "git_commit",
-        "git_add",
-        "git_reset",
-        "git_log",
-        "git_create_branch",
-        "git_checkout",
-        "git_show",
-        "git_init"
-      ],
       "notes": "Replace /path/to/repo with your repository path."
     },
     {
       "name": "memory",
       "description": "Knowledge graph-based persistent memory",
-      "toolCount": 7,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@modelcontextprotocol/server-memory"]
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
       },
-      "tools": [
-        "create_entities",
-        "create_relations",
-        "add_observations",
-        "delete_entities",
-        "delete_observations",
-        "delete_relations",
-        "read_graph",
-        "search_nodes",
-        "open_nodes"
-      ],
       "notes": "Stores entities and relations in a knowledge graph for persistent memory across sessions."
     },
     {
       "name": "sequentialthinking",
       "description": "Dynamic problem-solving through thought sequences",
-      "toolCount": 1,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@modelcontextprotocol/server-sequentialthinking"]
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequentialthinking"
+        ]
       },
-      "tools": ["sequentialthinking"],
       "notes": "Helps break down complex problems into sequential reasoning steps."
     },
     {
       "name": "time",
       "description": "Get current time and timezone conversions",
-      "toolCount": 2,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@modelcontextprotocol/server-time"]
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-time"
+        ]
       },
-      "tools": ["get_current_time", "convert_time"],
       "notes": "Provides current time in various timezones and converts between them."
     },
     {
       "name": "playwright",
       "description": "Browser automation and web scraping",
-      "toolCount": 22,
       "recommended": {
         "command": "bunx",
-        "args": ["@playwright/mcp@latest"]
+        "args": [
+          "@playwright/mcp@latest"
+        ]
       },
-      "tools": [
-        "browser_click",
-        "browser_close",
-        "browser_console_messages",
-        "browser_drag",
-        "browser_evaluate",
-        "browser_file_upload",
-        "browser_fill_form",
-        "browser_handle_dialog",
-        "browser_hover",
-        "browser_navigate",
-        "browser_navigate_back",
-        "browser_network_requests",
-        "browser_press_key",
-        "browser_resize",
-        "browser_run_code",
-        "browser_select_option",
-        "browser_snapshot",
-        "browser_take_screenshot",
-        "browser_type",
-        "browser_wait_for",
-        "browser_tabs",
-        "browser_install"
-      ],
       "notes": "Full browser automation via Playwright. Headless by default. Additional coordinate, PDF, and testing tools are available with --caps=vision, --caps=pdf, and --caps=testing."
     },
     {
       "name": "brave-search",
       "description": "Web search via Brave Search API",
-      "toolCount": 2,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@modelcontextprotocol/server-brave-search"]
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-brave-search"
+        ]
       },
-      "tools": ["brave_web_search", "brave_local_search"],
-      "envVars": ["BRAVE_API_KEY"],
+      "envVars": [
+        "BRAVE_API_KEY"
+      ],
       "notes": "Requires BRAVE_API_KEY environment variable. Get key at https://brave.com/search/api/"
     },
     {
       "name": "github",
       "description": "GitHub API operations",
-      "toolCount": 26,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@modelcontextprotocol/server-github"]
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-github"
+        ]
       },
-      "tools": [
-        "create_or_update_file",
-        "search_repositories",
-        "create_repository",
-        "get_file_contents",
-        "push_files",
-        "create_issue",
-        "create_pull_request",
-        "fork_repository",
-        "create_branch",
-        "list_commits",
-        "list_issues",
-        "update_issue",
-        "add_issue_comment",
-        "search_code",
-        "search_issues",
-        "search_users",
-        "get_issue",
-        "get_pull_request",
-        "list_pull_requests",
-        "create_pull_request_review",
-        "merge_pull_request",
-        "get_pull_request_files",
-        "get_pull_request_status",
-        "update_pull_request_branch",
-        "get_pull_request_comments",
-        "get_pull_request_reviews"
+      "envVars": [
+        "GITHUB_PERSONAL_ACCESS_TOKEN"
       ],
-      "envVars": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
       "notes": "Requires GITHUB_PERSONAL_ACCESS_TOKEN. Create at https://github.com/settings/tokens"
     },
     {
       "name": "context7",
       "description": "Up-to-date code documentation for LLMs and AI code editors",
-      "toolCount": 2,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@upstash/context7-mcp"]
+        "args": [
+          "-y",
+          "@upstash/context7-mcp"
+        ]
       },
-      "tools": ["resolve-library-id", "query-docs"],
       "notes": "Fetches current documentation and code examples for libraries. Optional API key from https://context7.com/dashboard for higher rate limits (pass --api-key YOUR_KEY)."
     },
     {
       "name": "slack",
       "description": "Slack workspace operations",
-      "toolCount": 7,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "@modelcontextprotocol/server-slack"]
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-slack"
+        ]
       },
-      "tools": [
-        "slack_list_channels",
-        "slack_post_message",
-        "slack_reply_to_thread",
-        "slack_add_reaction",
-        "slack_get_channel_history",
-        "slack_get_thread_replies",
-        "slack_get_users"
+      "envVars": [
+        "SLACK_BOT_TOKEN",
+        "SLACK_TEAM_ID"
       ],
-      "envVars": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
       "notes": "Requires SLACK_BOT_TOKEN and SLACK_TEAM_ID. Create Slack app at https://api.slack.com/apps"
     },
     {
       "name": "clerk",
       "description": "Access Clerk SDK snippets and implementation patterns",
-      "toolCount": 2,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "mcp-remote", "https://mcp.clerk.com/mcp"]
+        "args": [
+          "-y",
+          "mcp-remote",
+          "https://mcp.clerk.com/mcp"
+        ]
       },
-      "tools": ["clerk_sdk_snippet", "list_clerk_sdk_snippets"],
       "notes": "Retrieves code examples for Clerk features. Uses streamable HTTP transport via mcp-remote."
     },
     {
       "name": "gemini-media",
       "description": "Multimodal media analysis and image generation via Google Gemini 3",
-      "toolCount": 4,
       "recommended": {
         "command": "uvx",
         "args": [
@@ -246,40 +168,28 @@
           "mcp"
         ]
       },
-      "tools": [
-        "analyze_media",
-        "generate_image",
-        "clear_cache",
-        "list_models"
+      "envVars": [
+        "GEMINI_API_KEY",
+        "GEMINI_MEDIA_GCS_BUCKET"
       ],
-      "envVars": ["GEMINI_API_KEY", "GEMINI_MEDIA_GCS_BUCKET"],
       "notes": "Analyzes YouTube URLs, audio, video, images, and PDFs. Generates images with Gemini 3 Pro. GEMINI_MEDIA_GCS_BUCKET required for local file analysis (uploads to GCS)."
     },
     {
       "name": "exa",
       "description": "Web, code, company, and people search via Exa",
-      "toolCount": 9,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "mcp-remote", "https://mcp.exa.ai/mcp"]
+        "args": [
+          "-y",
+          "mcp-remote",
+          "https://mcp.exa.ai/mcp"
+        ]
       },
-      "tools": [
-        "web_search_exa",
-        "web_search_advanced_exa",
-        "get_code_context_exa",
-        "deep_search_exa",
-        "crawling_exa",
-        "company_research_exa",
-        "people_search_exa",
-        "deep_researcher_start",
-        "deep_researcher_check"
-      ],
       "notes": "Optional query params: tools=tool1,tool2 to enable extra tools; default tools are web_search_exa, get_code_context_exa, company_research_exa. Optional exaApiKey=YOUR_EXA_API_KEY to use your key. Local npm server uses EXA_API_KEY."
     },
     {
       "name": "supabase",
       "description": "Manage Supabase projects, databases, edge functions, and storage",
-      "toolCount": 32,
       "recommended": {
         "command": "bunx",
         "args": [
@@ -288,59 +198,19 @@
           "https://mcp.supabase.com/mcp?project_ref=<project-ref>"
         ]
       },
-      "tools": [
-        "list_projects",
-        "get_project",
-        "create_project",
-        "pause_project",
-        "restore_project",
-        "list_organizations",
-        "get_organization",
-        "get_cost",
-        "confirm_cost",
-        "search_docs",
-        "list_tables",
-        "list_extensions",
-        "list_migrations",
-        "apply_migration",
-        "execute_sql",
-        "get_logs",
-        "get_advisors",
-        "get_project_url",
-        "get_publishable_keys",
-        "generate_typescript_types",
-        "list_edge_functions",
-        "get_edge_function",
-        "deploy_edge_function",
-        "create_branch",
-        "list_branches",
-        "delete_branch",
-        "merge_branch",
-        "reset_branch",
-        "rebase_branch",
-        "list_storage_buckets",
-        "get_storage_config",
-        "update_storage_config"
-      ],
       "notes": "Replace <project-ref> with your project ID from Supabase dashboard. Uses OAuth via browser. Add ?read_only=true for safer ops. Add ?features=database,docs to limit tool groups. For dev/testing only."
     },
     {
       "name": "shadcn",
       "description": "Browse, search, and install shadcn/ui components from registries",
-      "toolCount": 7,
       "recommended": {
         "command": "bunx",
-        "args": ["-y", "shadcn@latest", "mcp"]
+        "args": [
+          "-y",
+          "shadcn@latest",
+          "mcp"
+        ]
       },
-      "tools": [
-        "get_project_registries",
-        "list_items_in_registries",
-        "search_items_in_registries",
-        "view_items_in_registries",
-        "get_item_examples_from_registries",
-        "get_add_command_for_items",
-        "get_audit_checklist"
-      ],
       "notes": "Requires components.json in project root. Configure registries in components.json. Supports @shadcn (default), private registries, and third-party sources."
     }
   ]

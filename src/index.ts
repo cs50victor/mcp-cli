@@ -223,7 +223,7 @@ mcpx v${VERSION} - Registry-backed MCP discovery and invocation for AI agents
 
 Usage:
   mcpx                                     Show this help message
-  mcpx list                                List available servers and tools
+  mcpx list                                List available servers
   mcpx ls                                  Alias for list
   mcpx [options] <server>                  Show server tools and parameters
   mcpx [options] <server>/<tool>           Show tool schema and description
