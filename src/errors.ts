@@ -182,7 +182,7 @@ export function toolNotFoundError(
     details: availableTools
       ? `Available tools: ${toolList}${moreCount}`
       : undefined,
-    suggestion: `Run 'mcpx ${serverName}' to list all tools. Use 'mcpx list' to see available registry servers and tools.`,
+    suggestion: `Run 'mcpx ${serverName}' to list all tools. Use 'mcpx list' to see available registry servers.`,
   };
 }
 
@@ -284,7 +284,7 @@ export function toolDisabledError(
     type: 'TOOL_DISABLED',
     message: `Tool "${toolPath}" is disabled`,
     details: `Matched pattern "${pattern}" from ${source}`,
-    suggestion: `Use 'mcpx list' to see available registry servers and tools.`,
+    suggestion: `Use 'mcpx list' to see available registry servers.`,
   };
 }
 

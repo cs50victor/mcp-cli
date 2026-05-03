@@ -104,25 +104,11 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
     process.exit(ErrorCode.NETWORK_ERROR);
   }
 
-  const disabledPatterns = await loadDisabledTools();
   const servers = registry.servers
     .map((server) => {
-      const tools = server.tools
-        .filter(
-          (toolName) =>
-            !findDisabledMatch(`${server.name}/${toolName}`, disabledPatterns),
-        )
-        .map((toolName) => ({
-          name: toolName,
-          description: undefined,
-          inputSchema: {},
-        }));
-
       return {
         name: server.name,
         description: server.description,
-        toolCount: tools.length,
-        tools,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -133,8 +119,6 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
         servers.map((server) => ({
           name: server.name,
           description: server.description,
-          toolCount: server.toolCount,
-          tools: server.tools.map((tool) => tool.name),
           source: 'registry',
         })),
       ),
@@ -144,7 +128,7 @@ async function listRegistryServers(options: ListOptions): Promise<void> {
       formatServerList(
         servers.map((server) => ({
           name: server.name,
-          tools: server.tools,
+          tools: [],
           instructions: server.description,
         })),
         options.withDescriptions,

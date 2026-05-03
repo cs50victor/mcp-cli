@@ -1,16 +1,13 @@
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { join } from 'node:path';
-import { mkdtemp, writeFile, rm, stat } from 'node:fs/promises';
-import { tmpdir, homedir } from 'node:os';
-import { existsSync } from 'node:fs';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import {
   getRegistryUrl,
   fetchRegistry,
   findServer,
   clearRegistryCache,
   getCachePath,
-  type Registry,
-  type RegistryServer,
 } from '../src/registry';
 
 const LOCAL_REGISTRY_PATH = join(import.meta.dir, '../registry/registry.json');
@@ -55,14 +52,14 @@ describe('registry', () => {
       expect(registry.servers.length).toBeGreaterThan(0);
     });
 
-    test('should_have_valid_server_structure', async () => {
+    test('should_have_valid_server_structure_without_static_tools', async () => {
       const registry = await fetchRegistry();
       const server = registry.servers[0];
       expect(typeof server.name).toBe('string');
       expect(typeof server.description).toBe('string');
-      expect(typeof server.toolCount).toBe('number');
       expect(server.recommended).toBeDefined();
-      expect(Array.isArray(server.tools)).toBe(true);
+      expect('tools' in server).toBe(false);
+      expect('toolCount' in server).toBe(false);
     });
 
     test('should_find_filesystem_server', async () => {
@@ -70,8 +67,39 @@ describe('registry', () => {
       const fs = registry.servers.find((s) => s.name === 'filesystem');
       expect(fs).toBeDefined();
       expect(fs!.description).toContain('file');
-      expect(fs!.tools).toContain('read_file');
+      expect('tools' in fs!).toBe(false);
     });
+
+    test('strips_legacy_static_tool_fields_from_registry_payloads', async () => {
+      const tempDir = await mkdtemp(join(tmpdir(), 'mcpx-registry-'));
+      try {
+        const registryPath = join(tempDir, 'registry.json');
+        await writeFile(
+          registryPath,
+          JSON.stringify({
+            version: 1,
+            servers: [
+              {
+                name: 'legacy',
+                description: 'Legacy payload',
+                toolCount: 1,
+                recommended: { command: 'echo', args: ['ok'] },
+                tools: ['stale_tool'],
+              },
+            ],
+          }),
+        );
+
+        process.env.MCPX_REGISTRY_URL = registryPath;
+        clearRegistryCache();
+        const registry = await fetchRegistry();
+        expect('tools' in registry.servers[0]).toBe(false);
+        expect('toolCount' in registry.servers[0]).toBe(false);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    });
+
   });
 
   describe('RegistryServer type', () => {
