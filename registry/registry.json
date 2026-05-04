@@ -116,6 +116,18 @@
       "notes": "Requires GITHUB_PERSONAL_ACCESS_TOKEN. Create at https://github.com/settings/tokens"
     },
     {
+      "name": "link",
+      "description": "Create secure, one-time-use Link payment credentials for agent checkout flows",
+      "recommended": {
+        "command": "bunx",
+        "args": [
+          "@stripe/link-cli@0.4.2",
+          "--mcp"
+        ]
+      },
+      "notes": "Requires a Link account. Run link-cli auth login to authenticate. Optional overrides: LINK_API_BASE_URL, LINK_AUTH_BASE_URL, LINK_HTTP_PROXY."
+    },
+    {
       "name": "context7",
       "description": "Up-to-date code documentation for LLMs and AI code editors",
       "recommended": {
