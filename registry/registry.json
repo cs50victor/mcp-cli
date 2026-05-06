@@ -19,9 +19,7 @@
       "description": "Make HTTP requests and fetch web content",
       "recommended": {
         "command": "uvx",
-        "args": [
-          "mcp-server-fetch"
-        ]
+        "args": ["mcp-server-fetch"]
       },
       "notes": "Fetches URLs and returns content. Supports various content types."
     },
@@ -30,11 +28,7 @@
       "description": "Git repository operations",
       "recommended": {
         "command": "uvx",
-        "args": [
-          "mcp-server-git",
-          "--repository",
-          "/path/to/repo"
-        ]
+        "args": ["mcp-server-git", "--repository", "/path/to/repo"]
       },
       "notes": "Replace /path/to/repo with your repository path."
     },
@@ -43,10 +37,7 @@
       "description": "Knowledge graph-based persistent memory",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-memory"
-        ]
+        "args": ["-y", "@modelcontextprotocol/server-memory"]
       },
       "notes": "Stores entities and relations in a knowledge graph for persistent memory across sessions."
     },
@@ -55,10 +46,7 @@
       "description": "Dynamic problem-solving through thought sequences",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-sequentialthinking"
-        ]
+        "args": ["-y", "@modelcontextprotocol/server-sequentialthinking"]
       },
       "notes": "Helps break down complex problems into sequential reasoning steps."
     },
@@ -67,10 +55,7 @@
       "description": "Get current time and timezone conversions",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-time"
-        ]
+        "args": ["-y", "@modelcontextprotocol/server-time"]
       },
       "notes": "Provides current time in various timezones and converts between them."
     },
@@ -79,9 +64,7 @@
       "description": "Browser automation and web scraping",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "@playwright/mcp@latest"
-        ]
+        "args": ["@playwright/mcp@latest"]
       },
       "notes": "Full browser automation via Playwright. Headless by default. Additional coordinate, PDF, and testing tools are available with --caps=vision, --caps=pdf, and --caps=testing."
     },
@@ -90,40 +73,35 @@
       "description": "Web search via Brave Search API",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-brave-search"
-        ]
+        "args": ["-y", "@modelcontextprotocol/server-brave-search"]
       },
-      "envVars": [
-        "BRAVE_API_KEY"
-      ],
+      "envVars": ["BRAVE_API_KEY"],
       "notes": "Requires BRAVE_API_KEY environment variable. Get key at https://brave.com/search/api/"
     },
     {
       "name": "github",
-      "description": "GitHub API operations",
+      "description": "Official GitHub MCP server — repository management, issues, PRs, Actions, code scanning, Copilot, gists, notifications, and more across 20+ toolsets",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-github"
-        ]
+        "args": ["-y", "mcp-remote", "https://api.githubcopilot.com/mcp/"]
       },
-      "envVars": [
-        "GITHUB_PERSONAL_ACCESS_TOKEN"
-      ],
-      "notes": "Requires GITHUB_PERSONAL_ACCESS_TOKEN. Create at https://github.com/settings/tokens"
+      "notes": "OAuth-based authentication via browser. Requires a compatible MCP host (VS Code 1.101+, Claude Desktop, Cursor, Windsurf, etc.). Alternative: use Docker with `ghcr.io/github/github-mcp-server` and GITHUB_PERSONAL_ACCESS_TOKEN env var for PAT auth. Toolsets: context, repos, issues, pull_requests, users (default), plus actions, code_security, copilot, dependabot, discussions, gists, git, labels, notifications, orgs, projects, secret_protection, security_advisories, stargazers. Source: https://github.com/github/github-mcp-server"
+    },
+    {
+      "name": "vercel",
+      "description": "Vercel MCP server — search docs, manage teams, projects, deployments, domains, runtime logs, and toolbar comments",
+      "recommended": {
+        "command": "bunx",
+        "args": ["-y", "mcp-remote", "https://mcp.vercel.com"]
+      },
+      "notes": "OAuth-based authentication via browser. Requires a compatible MCP host (VS Code 1.101+, Claude Desktop, Cursor, Windsurf, etc.). Tools: search_documentation, list_teams, list_projects, get_project, list_deployments, get_deployment, get_deployment_build_logs, get_runtime_logs, check_domain_availability_and_price, buy_domain, get_access_to_vercel_url, web_fetch_vercel_url, list_toolbar_threads, get_toolbar_thread, change_toolbar_thread_resolve_status, reply_to_toolbar_thread, edit_toolbar_message, add_toolbar_reaction, use_vercel_cli, deploy_to_vercel. Source: https://vercel.com/docs/agent-resources/vercel-mcp"
     },
     {
       "name": "link",
       "description": "Create secure, one-time-use Link payment credentials for agent checkout flows",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "@stripe/link-cli@0.4.2",
-          "--mcp"
-        ]
+        "args": ["@stripe/link-cli@0.4.2", "--mcp"]
       },
       "notes": "Requires a Link account. Run link-cli auth login to authenticate. Optional overrides: LINK_API_BASE_URL, LINK_AUTH_BASE_URL, LINK_HTTP_PROXY."
     },
@@ -132,10 +110,7 @@
       "description": "Up-to-date code documentation for LLMs and AI code editors",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@upstash/context7-mcp"
-        ]
+        "args": ["-y", "@upstash/context7-mcp"]
       },
       "notes": "Fetches current documentation and code examples for libraries. Optional API key from https://context7.com/dashboard for higher rate limits (pass --api-key YOUR_KEY)."
     },
@@ -144,15 +119,9 @@
       "description": "Slack workspace operations",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "@modelcontextprotocol/server-slack"
-        ]
+        "args": ["-y", "@modelcontextprotocol/server-slack"]
       },
-      "envVars": [
-        "SLACK_BOT_TOKEN",
-        "SLACK_TEAM_ID"
-      ],
+      "envVars": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
       "notes": "Requires SLACK_BOT_TOKEN and SLACK_TEAM_ID. Create Slack app at https://api.slack.com/apps"
     },
     {
@@ -160,11 +129,7 @@
       "description": "Access Clerk SDK snippets and implementation patterns",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "mcp-remote",
-          "https://mcp.clerk.com/mcp"
-        ]
+        "args": ["-y", "mcp-remote", "https://mcp.clerk.com/mcp"]
       },
       "notes": "Retrieves code examples for Clerk features. Uses streamable HTTP transport via mcp-remote."
     },
@@ -180,10 +145,7 @@
           "mcp"
         ]
       },
-      "envVars": [
-        "GEMINI_API_KEY",
-        "GEMINI_MEDIA_GCS_BUCKET"
-      ],
+      "envVars": ["GEMINI_API_KEY", "GEMINI_MEDIA_GCS_BUCKET"],
       "notes": "Analyzes YouTube URLs, audio, video, images, and PDFs. Generates images with Gemini 3 Pro. GEMINI_MEDIA_GCS_BUCKET required for local file analysis (uploads to GCS)."
     },
     {
@@ -191,11 +153,7 @@
       "description": "Web, code, company, and people search via Exa",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "mcp-remote",
-          "https://mcp.exa.ai/mcp"
-        ]
+        "args": ["-y", "mcp-remote", "https://mcp.exa.ai/mcp"]
       },
       "notes": "Optional query params: tools=tool1,tool2 to enable extra tools; default tools are web_search_exa, get_code_context_exa, company_research_exa. Optional exaApiKey=YOUR_EXA_API_KEY to use your key. Local npm server uses EXA_API_KEY."
     },
@@ -217,11 +175,7 @@
       "description": "Browse, search, and install shadcn/ui components from registries",
       "recommended": {
         "command": "bunx",
-        "args": [
-          "-y",
-          "shadcn@latest",
-          "mcp"
-        ]
+        "args": ["-y", "shadcn@latest", "mcp"]
       },
       "notes": "Requires components.json in project root. Configure registries in components.json. Supports @shadcn (default), private registries, and third-party sources."
     }
