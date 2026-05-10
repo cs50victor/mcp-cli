@@ -1,6 +1,6 @@
 {
   "name": "@cs50victor/mcpx",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A lightweight CLI for interacting with MCP (Model Context Protocol) servers",
   "type": "module",
   "main": "src/index.ts",
