@@ -96,6 +96,7 @@ mcpx <server>/<tool> <json>       Call tool with arguments
 mcpx daemon <start|stop|status>   Manage persistent connections
 mcpx registry list                List built-in registry servers
 mcpx registry get <name>          Show registry metadata and default config
+mcpx registry refresh             Force-refresh the registry cache
 ```
 
 | Flag | Effect |
