@@ -36,6 +36,14 @@ describe('subcommand sync', () => {
         await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry`.nothrow();
       expect(result.stderr.toString()).not.toContain('Did you mean');
     });
+
+    test('registry refresh', async () => {
+      const result =
+        await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry refresh`.nothrow();
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr.toString()).not.toContain('Did you mean');
+      expect(result.stdout.toString()).toContain('Refreshed registry cache');
+    });
   });
 
   describe('typos trigger fuzzy matching', () => {

@@ -57,7 +57,7 @@ interface ParsedArgs {
   daemonAction?: 'start' | 'stop' | 'status';
   daemonServers?: string[];
   daemonForce?: boolean;
-  registryAction?: 'help' | 'list' | 'get';
+  registryAction?: 'help' | 'list' | 'get' | 'refresh';
   registryServerName?: string;
 }
 
@@ -181,6 +181,8 @@ function parseArgs(args: string[]): ParsedArgs {
       result.registryAction = 'help';
     } else if (action === 'list') {
       result.registryAction = 'list';
+    } else if (action === 'refresh') {
+      result.registryAction = 'refresh';
     } else if (action === 'get') {
       result.registryAction = 'get';
       result.registryServerName = positional[2];
@@ -232,6 +234,7 @@ Usage:
   mcpx registry                            Show registry command help
   mcpx registry list                       List available MCP servers from registry
   mcpx registry get <name>                 Show server details and default config
+  mcpx registry refresh                    Force-refresh the registry cache
 
 Options:
   -h, --help               Show this help message
@@ -281,6 +284,7 @@ Registry (discover MCP servers):
   mcpx registry list --json               # List as JSON
   mcpx registry get filesystem            # Show filesystem server config
   mcpx registry get playwright --json     # Get registry metadata as JSON
+  mcpx registry refresh                   # Force-refresh registry cache
 
 Daemon Mode (persistent connections for stateful servers):
   mcpx daemon start                          # Start daemon process

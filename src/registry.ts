@@ -87,6 +87,42 @@ function normalizeRegistry(registry: Registry): Registry {
   };
 }
 
+function getLocalRegistryPath(url: string): string | null {
+  if (url.startsWith('file://')) {
+    return url.slice(7);
+  }
+  if (!url.startsWith('http')) {
+    return url.startsWith('/') ? url : join(process.cwd(), url);
+  }
+  return null;
+}
+
+async function fetchFreshRegistry(url: string): Promise<Registry> {
+  const localPath = getLocalRegistryPath(url);
+  if (localPath) {
+    const content = await readFile(localPath, 'utf-8');
+    const registry = normalizeRegistry(JSON.parse(content) as Registry);
+    memoryCache = registry;
+    return registry;
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch registry: ${response.status} ${response.statusText}`,
+    );
+  }
+  const registry = normalizeRegistry((await response.json()) as Registry);
+  await writeDiskCache(registry);
+  memoryCache = registry;
+  return registry;
+}
+
+export async function refreshRegistry(): Promise<Registry> {
+  clearRegistryCache();
+  return fetchFreshRegistry(getRegistryUrl());
+}
+
 export async function fetchRegistry(): Promise<Registry> {
   // 1. Check memory cache
   if (memoryCache) {
@@ -96,16 +132,8 @@ export async function fetchRegistry(): Promise<Registry> {
   const url = getRegistryUrl();
 
   // 2. For local files, skip disk cache (used in tests and local development)
-  if (url.startsWith('file://') || !url.startsWith('http')) {
-    const filePath = url.startsWith('file://')
-      ? url.slice(7)
-      : url.startsWith('/')
-        ? url
-        : join(process.cwd(), url);
-    const content = await readFile(filePath, 'utf-8');
-    const registry = normalizeRegistry(JSON.parse(content) as Registry);
-    memoryCache = registry;
-    return registry;
+  if (getLocalRegistryPath(url)) {
+    return fetchFreshRegistry(url);
   }
 
   // 3. Check disk cache freshness
@@ -119,20 +147,9 @@ export async function fetchRegistry(): Promise<Registry> {
 
   // 4. Fetch from network
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch registry: ${response.status} ${response.statusText}`,
-      );
-    }
-    const registry = normalizeRegistry((await response.json()) as Registry);
-
-    // 5. Write to disk cache
-    await writeDiskCache(registry);
-    memoryCache = registry;
-    return registry;
+    return await fetchFreshRegistry(url);
   } catch (err) {
-    // 6. Fallback to stale cache on network error
+    // 5. Fallback to stale cache on network error
     const staleCache = await readDiskCache();
     if (staleCache) {
       console.error(

@@ -14,10 +14,11 @@ import {
   fetchRegistry,
   findServer,
   getRegistryUrl,
+  refreshRegistry,
 } from '../registry.js';
 
 export interface RegistryOptions {
-  action: 'help' | 'list' | 'get';
+  action: 'help' | 'list' | 'get' | 'refresh';
   serverName?: string;
   json: boolean;
 }
@@ -30,6 +31,7 @@ Usage:
   mcpx registry list --json       List servers as JSON
   mcpx registry get <name>        Show server details and config
   mcpx registry get <name> --json Get server metadata as JSON
+  mcpx registry refresh           Force-refresh the registry cache
   mcpx registry <name>            Shorthand for 'get <name>'
 
 Environment:
@@ -39,6 +41,22 @@ Environment:
 export async function registryCommand(options: RegistryOptions): Promise<void> {
   if (options.action === 'help') {
     printRegistryHelp();
+    return;
+  }
+
+  if (options.action === 'refresh') {
+    try {
+      const registry = await refreshRegistry();
+      console.log(
+        `Refreshed registry cache from ${getRegistryUrl()} (${registry.servers.length} servers).`,
+      );
+    } catch (error) {
+      const url = getRegistryUrl();
+      console.error(
+        formatCliError(registryFetchError(url, (error as Error).message)),
+      );
+      process.exit(ErrorCode.NETWORK_ERROR);
+    }
     return;
   }
 

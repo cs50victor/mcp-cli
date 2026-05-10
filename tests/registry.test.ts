@@ -8,6 +8,7 @@ import {
   findServer,
   clearRegistryCache,
   getCachePath,
+  refreshRegistry,
 } from '../src/registry';
 
 const LOCAL_REGISTRY_PATH = join(import.meta.dir, '../registry/registry.json');
@@ -100,6 +101,50 @@ describe('registry', () => {
       }
     });
 
+    test('refreshRegistry_bypasses_memory_cache', async () => {
+      const tempDir = await mkdtemp(join(tmpdir(), 'mcpx-registry-'));
+      try {
+        const registryPath = join(tempDir, 'registry.json');
+        await writeFile(
+          registryPath,
+          JSON.stringify({
+            version: 1,
+            servers: [
+              {
+                name: 'before',
+                description: 'Before refresh',
+                recommended: { command: 'echo', args: ['before'] },
+              },
+            ],
+          }),
+        );
+
+        process.env.MCPX_REGISTRY_URL = registryPath;
+        clearRegistryCache();
+        const cached = await fetchRegistry();
+        expect(cached.servers[0].name).toBe('before');
+
+        await writeFile(
+          registryPath,
+          JSON.stringify({
+            version: 1,
+            servers: [
+              {
+                name: 'after',
+                description: 'After refresh',
+                recommended: { command: 'echo', args: ['after'] },
+              },
+            ],
+          }),
+        );
+
+        expect((await fetchRegistry()).servers[0].name).toBe('before');
+        expect((await refreshRegistry()).servers[0].name).toBe('after');
+        expect((await fetchRegistry()).servers[0].name).toBe('after');
+      } finally {
+        await rm(tempDir, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('RegistryServer type', () => {
