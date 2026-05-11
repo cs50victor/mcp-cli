@@ -86,6 +86,23 @@
       "notes": "Full browser automation via Playwright. Headless by default. Additional coordinate, PDF, and testing tools are available with --caps=vision, --caps=pdf, and --caps=testing."
     },
     {
+      "name": "browser-use",
+      "description": "Browser automation through Browser Use",
+      "recommended": {
+        "command": "uvx",
+        "args": [
+          "--from",
+          "browser-use[cli]",
+          "browser-use",
+          "--mcp"
+        ]
+      },
+      "envVars": [
+        "OPENAI_API_KEY"
+      ],
+      "notes": "Runs the Browser Use local MCP server over stdio. Set OPENAI_API_KEY, or ANTHROPIC_API_KEY as an alternative. Optional: BROWSER_USE_HEADLESS=false to show the browser window, BROWSER_USE_DISABLE_SECURITY=true to disable browser security features."
+    },
+    {
       "name": "brave-search",
       "description": "Web search via Brave Search API",
       "recommended": {
