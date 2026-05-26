@@ -187,21 +187,21 @@
     },
     {
       "name": "gemini-media",
-      "description": "Multimodal media analysis and image generation via Google Gemini 3",
+      "description": "Analyze audio, video, images, PDFs, and YouTube URLs with Gemini; generate and edit images",
       "recommended": {
         "command": "uvx",
         "args": [
           "--from",
           "git+https://github.com/cs50victor/gemini-media",
-          "gemini-media",
-          "mcp"
+          "gemini-media"
         ]
       },
       "envVars": [
         "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
         "GEMINI_MEDIA_GCS_BUCKET"
       ],
-      "notes": "Analyzes YouTube URLs, audio, video, images, and PDFs. Generates images with Gemini 3 Pro. GEMINI_MEDIA_GCS_BUCKET required for local file analysis (uploads to GCS)."
+      "notes": "Use analyze_media for YouTube URLs or absolute file paths to audio, video, image, or PDF files. Use generate_image for image generation and edits. Set GEMINI_API_KEY or GOOGLE_API_KEY; set GEMINI_MEDIA_GCS_BUCKET only for local file paths."
     },
     {
       "name": "exa",
