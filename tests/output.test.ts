@@ -2,15 +2,16 @@
  * Unit tests for output formatting
  */
 
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import {
-  formatServerList,
-  formatToolSchema,
-  formatToolResult,
-  formatJson,
   formatError,
+  formatJson,
   formatRegistryList,
   formatRegistryServer,
+  formatServerDetails,
+  formatServerList,
+  formatToolResult,
+  formatToolSchema,
 } from '../src/output';
 
 // Disable colors for testing
@@ -59,7 +60,26 @@ describe('output', () => {
       const withoutDesc = formatServerList(servers, false);
       expect(withoutDesc).not.toContain('A test tool');
     });
+  });
 
+  describe('formatServerDetails', () => {
+    test('shows a tool-schema tip after server tools', () => {
+      const output = formatServerDetails(
+        'github',
+        { command: 'server-github' },
+        [
+          {
+            name: 'search',
+            description: 'Search repositories',
+            inputSchema: {},
+          },
+        ],
+      );
+
+      expect(output).toContain(
+        "Tip: Run 'mcpx github/<tool>' for a tool's schema and description.",
+      );
+    });
   });
 
   describe('formatToolSchema', () => {
@@ -81,6 +101,7 @@ describe('output', () => {
       expect(output).toContain('github');
       expect(output).toContain('Search GitHub');
       expect(output).toContain('query');
+      expect(output).not.toContain('Tip:');
     });
   });
 

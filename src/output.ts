@@ -112,6 +112,10 @@ export function formatServerDetails(
     lines.push('');
   }
 
+  lines.push(
+    `${color('Tip:', colors.dim)} Run 'mcpx ${serverName}/<tool>' for a tool's schema and description.`,
+  );
+
   return lines.join('\n').trimEnd();
 }
 
