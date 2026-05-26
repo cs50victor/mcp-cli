@@ -76,6 +76,7 @@ function parseArgs(args: string[]): ParsedArgs {
     switch (arg) {
       case '-h':
       case '--help':
+        if (positional.length > 0) break;
         result.command = 'help';
         return result;
 

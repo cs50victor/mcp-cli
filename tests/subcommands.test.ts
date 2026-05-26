@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { $ } from 'bun';
 
@@ -17,6 +17,16 @@ describe('subcommand sync', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.toString()).toContain('Usage:');
     expect(result.stdout.toString()).toContain('mcpx list');
+  });
+
+  test('trailing --help after a server target does not show global help', async () => {
+    const result =
+      await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} missing-server --help`.nothrow();
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout.toString()).not.toContain('Usage:');
+    expect(result.stderr.toString()).toContain(
+      'Server "missing-server" not found',
+    );
   });
 
   describe('valid subcommands are recognized', () => {
@@ -124,8 +134,7 @@ describe('subcommand sync', () => {
     });
 
     test('--arg without --command is an error', async () => {
-      const result =
-        await $`bun run ${CLI_PATH} --arg foo server`.nothrow();
+      const result = await $`bun run ${CLI_PATH} --arg foo server`.nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain('--arg requires --command');
     });
@@ -134,12 +143,13 @@ describe('subcommand sync', () => {
       const result =
         await $`bun run ${CLI_PATH} --env KEY=VAL server`.nothrow();
       expect(result.exitCode).toBe(1);
-      expect(result.stderr.toString()).toContain('--env requires --command or --url');
+      expect(result.stderr.toString()).toContain(
+        '--env requires --command or --url',
+      );
     });
 
     test('--command without a value is an error', async () => {
-      const result =
-        await $`bun run ${CLI_PATH} --command`.nothrow();
+      const result = await $`bun run ${CLI_PATH} --command`.nothrow();
       expect(result.exitCode).toBe(1);
     });
 
