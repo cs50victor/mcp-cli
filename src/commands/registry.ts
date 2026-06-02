@@ -35,7 +35,9 @@ Usage:
   mcpx registry <name>            Shorthand for 'get <name>'
 
 Environment:
-  MCPX_REGISTRY_URL    Custom registry URL (default: GitHub-hosted registry)`);
+  MCPX_REGISTRY_URL               Custom registry URL (default: GitHub-hosted registry)
+  MCPX_REGISTRY_AUTH_TOKEN        Auth token for protected registries and registry-hosted MCP URLs
+  MCPX_REGISTRY_AUTH_HEADER_TYPE  Header name or scheme (e.g. x-api-key, bearer)`);
 }
 
 export async function registryCommand(options: RegistryOptions): Promise<void> {

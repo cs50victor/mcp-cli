@@ -1,15 +1,17 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
-import { join } from 'node:path';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
-  getRegistryUrl,
-  registryFetchHeaders,
+  clearRegistryCache,
   fetchRegistry,
   findServer,
-  clearRegistryCache,
   getCachePath,
+  getRegistryUrl,
   refreshRegistry,
+  registryAuthHeader,
+  registryFetchHeaders,
+  registryMcpAuthHeader,
 } from '../src/registry';
 
 const LOCAL_REGISTRY_PATH = join(import.meta.dir, '../registry/registry.json');
@@ -24,7 +26,7 @@ describe('registry', () => {
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.MCPX_REGISTRY_URL;
+      process.env.MCPX_REGISTRY_URL = undefined;
     } else {
       process.env.MCPX_REGISTRY_URL = originalEnv;
     }
@@ -33,7 +35,7 @@ describe('registry', () => {
 
   describe('getRegistryUrl', () => {
     test('should_return_default_url_when_no_env_var', () => {
-      delete process.env.MCPX_REGISTRY_URL;
+      process.env.MCPX_REGISTRY_URL = undefined;
       const url = getRegistryUrl();
       expect(url).toContain('github');
       expect(url).toContain('registry.json');
@@ -47,44 +49,82 @@ describe('registry', () => {
   });
 
   describe('registryFetchHeaders', () => {
-    const originalAuth = process.env.MCPX_REGISTRY_AUTH_HEADER;
+    const originalAuthToken = process.env.MCPX_REGISTRY_AUTH_TOKEN;
+    const originalAuthHeaderType = process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE;
 
     afterEach(() => {
-      if (originalAuth === undefined) {
-        delete process.env.MCPX_REGISTRY_AUTH_HEADER;
+      if (originalAuthToken === undefined) {
+        process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
       } else {
-        process.env.MCPX_REGISTRY_AUTH_HEADER = originalAuth;
+        process.env.MCPX_REGISTRY_AUTH_TOKEN = originalAuthToken;
+      }
+      if (originalAuthHeaderType === undefined) {
+        process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
+      } else {
+        process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = originalAuthHeaderType;
       }
     });
 
     test('should_return_undefined_when_unset', () => {
-      delete process.env.MCPX_REGISTRY_AUTH_HEADER;
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
       expect(registryFetchHeaders()).toBeUndefined();
     });
 
-    test('should_parse_x_api_key_header', () => {
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key: secret-key';
+    test('should_derive_header_from_token_and_header_type', () => {
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = "'secret-key'";
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x-api-key';
+
+      const authHeader = registryAuthHeader();
+
       expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
+      expect(authHeader?.mcpRemoteValue).toBe('${MCPX_REGISTRY_AUTH_TOKEN}');
+      expect(authHeader?.env).toEqual({
+        MCPX_REGISTRY_AUTH_TOKEN: 'secret-key',
+      });
     });
 
-    test('should_preserve_scheme_and_colons_in_value', () => {
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'Authorization: Bearer a:b';
-      expect(registryFetchHeaders()).toEqual({ Authorization: 'Bearer a:b' });
+    test('should_support_bearer_header_type', () => {
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'bearer';
+
+      expect(registryFetchHeaders()).toEqual({
+        Authorization: 'Bearer secret-key',
+      });
+      expect(registryAuthHeader()?.mcpRemoteValue).toBe(
+        'Bearer ${MCPX_REGISTRY_AUTH_TOKEN}',
+      );
     });
 
-    test('should_trim_surrounding_whitespace', () => {
-      process.env.MCPX_REGISTRY_AUTH_HEADER = '  x-api-key :   secret-key  ';
-      expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
+    test('should_throw_on_partial_token_header_type_config', () => {
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
+
+      expect(() => registryFetchHeaders()).toThrow('must be set together');
     });
 
-    test('should_throw_when_no_colon', () => {
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'secret-key';
-      expect(() => registryFetchHeaders()).toThrow('Name: value');
+    test('should_throw_when_header_type_is_invalid', () => {
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x api key';
+
+      expect(() => registryFetchHeaders()).toThrow('valid HTTP header name');
     });
 
-    test('should_throw_when_value_empty', () => {
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key:';
-      expect(() => registryFetchHeaders()).toThrow('Name: value');
+    test('should_match_mcp_urls_on_registry_host', () => {
+      process.env.MCPX_REGISTRY_URL =
+        'https://tools.example.test/team/registry.json?disable=github';
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x-api-key';
+
+      expect(
+        registryMcpAuthHeader('https://tools.example.test/team/mcp/github/'),
+      ).toBeDefined();
+      expect(
+        registryMcpAuthHeader('https://tools.example.test/other/mcp/github/'),
+      ).toBeDefined();
+      expect(
+        registryMcpAuthHeader('https://other.example.test/team/mcp/github/'),
+      ).toBeUndefined();
     });
   });
 
@@ -110,8 +150,8 @@ describe('registry', () => {
       const registry = await fetchRegistry();
       const fs = registry.servers.find((s) => s.name === 'filesystem');
       expect(fs).toBeDefined();
-      expect(fs!.description).toContain('file');
-      expect('tools' in fs!).toBe(false);
+      expect(fs?.description).toContain('file');
+      expect(fs && 'tools' in fs).toBe(false);
     });
 
     test('strips_legacy_static_tool_fields_from_registry_payloads', async () => {
@@ -197,9 +237,9 @@ describe('registry', () => {
         (s) => s.name === 'brave-search',
       );
       expect(braveSearch).toBeDefined();
-      expect(braveSearch!.envVars).toBeDefined();
-      expect(braveSearch!.envVars).toContain('BRAVE_API_KEY');
-      expect(braveSearch!.notes).toBeDefined();
+      expect(braveSearch?.envVars).toBeDefined();
+      expect(braveSearch?.envVars).toContain('BRAVE_API_KEY');
+      expect(braveSearch?.notes).toBeDefined();
     });
   });
 
@@ -208,14 +248,14 @@ describe('registry', () => {
       const registry = await fetchRegistry();
       const server = findServer(registry, 'filesystem');
       expect(server).toBeDefined();
-      expect(server!.name).toBe('filesystem');
+      expect(server?.name).toBe('filesystem');
     });
 
     test('should_find_server_case_insensitively', async () => {
       const registry = await fetchRegistry();
       const server = findServer(registry, 'FILESYSTEM');
       expect(server).toBeDefined();
-      expect(server!.name).toBe('filesystem');
+      expect(server?.name).toBe('filesystem');
     });
 
     test('should_return_undefined_for_unknown_server', async () => {

@@ -8,7 +8,12 @@ import {
   formatCliError,
   serverNotFoundError,
 } from './errors.js';
-import { fetchRegistry, findServer } from './registry.js';
+import {
+  type RegistryAuthHeader,
+  fetchRegistry,
+  findServer,
+  registryMcpAuthHeader,
+} from './registry.js';
 
 export interface ToolFilterConfig {
   includeTools?: string[];
@@ -449,10 +454,10 @@ export async function getServerConfig(
   const registryServer = findServer(registry, serverName);
 
   if (registryServer) {
-    const serverConfig = {
+    const serverConfig = withRegistryMcpRemoteAuth({
       command: registryServer.recommended.command,
       args: registryServer.recommended.args,
-    };
+    });
 
     if (config._configSource && config._configSource !== 'registry') {
       console.error(
@@ -487,6 +492,54 @@ export async function getServerConfig(
       ),
     ),
   );
+}
+
+function isMcpRemoteConfig(config: StdioServerConfig): boolean {
+  return [config.command, ...(config.args ?? [])].some(
+    (arg) => arg === 'mcp-remote' || arg.endsWith('/mcp-remote'),
+  );
+}
+
+function hasHeaderArg(args: string[], authHeader: RegistryAuthHeader): boolean {
+  for (let i = 0; i < args.length - 1; i++) {
+    if (
+      args[i] === '--header' &&
+      args[i + 1].toLowerCase().startsWith(`${authHeader.name.toLowerCase()}:`)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function withRegistryMcpRemoteAuth(
+  config: StdioServerConfig,
+): StdioServerConfig {
+  if (!isMcpRemoteConfig(config)) {
+    return config;
+  }
+
+  const args = [...(config.args ?? [])];
+  for (let i = 0; i < args.length; i++) {
+    const authHeader = registryMcpAuthHeader(args[i]);
+    if (!authHeader || hasHeaderArg(args, authHeader)) {
+      continue;
+    }
+
+    args.splice(
+      i,
+      0,
+      '--header',
+      `${authHeader.name}: ${authHeader.mcpRemoteValue}`,
+    );
+    return {
+      ...config,
+      args,
+      env: { ...config.env, ...authHeader.env },
+    };
+  }
+
+  return config;
 }
 
 export function listServerNames(config: McpServersConfig): string[] {

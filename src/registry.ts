@@ -32,8 +32,17 @@ const DEFAULT_REGISTRY_URL =
   'https://raw.githubusercontent.com/cs50victor/mcpx/dev/registry/registry.json';
 
 const STALE_MS = 3600 * 1000; // 1 hour
+const REGISTRY_AUTH_TOKEN_ENV = 'MCPX_REGISTRY_AUTH_TOKEN';
+const REGISTRY_AUTH_HEADER_TYPE_ENV = 'MCPX_REGISTRY_AUTH_HEADER_TYPE';
 
 let memoryCache: Registry | null = null;
+
+export interface RegistryAuthHeader {
+  name: string;
+  value: string;
+  mcpRemoteValue: string;
+  env: Record<string, string>;
+}
 
 export function getCachePath(): string {
   return join(homedir(), '.cache', 'mcpx', 'registry.json');
@@ -47,24 +56,120 @@ export function getRegistryUrl(): string {
   return process.env.MCPX_REGISTRY_URL || DEFAULT_REGISTRY_URL;
 }
 
-// Authenticated registries (e.g. a self-hosted tool server) gate /registry.json
-// behind an auth header. The operator supplies the full header so mcpx never has
-// to guess the scheme: MCPX_REGISTRY_AUTH_HEADER="x-api-key: <key>" or
-// "Authorization: Bearer <token>". Unset by default; the public registry is open.
-export function registryFetchHeaders(): Record<string, string> | undefined {
-  const header = process.env.MCPX_REGISTRY_AUTH_HEADER?.trim();
-  if (!header) {
-    return undefined;
+function stripMatchingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+      (trimmed.startsWith('"') && trimmed.endsWith('"')))
+  ) {
+    return trimmed.slice(1, -1).trim();
   }
-  const separator = header.indexOf(':');
-  const name = separator === -1 ? '' : header.slice(0, separator).trim();
-  const value = separator === -1 ? '' : header.slice(separator + 1).trim();
-  if (!name || !value) {
+  return trimmed;
+}
+
+function validateHeaderName(name: string): void {
+  if (!/^[A-Za-z0-9_-]+$/.test(name)) {
     throw new Error(
-      'MCPX_REGISTRY_AUTH_HEADER must be "Name: value", e.g. "x-api-key: <key>" or "Authorization: Bearer <token>".',
+      `${REGISTRY_AUTH_HEADER_TYPE_ENV} must be a valid HTTP header name or auth scheme, e.g. "x-api-key" or "bearer".`,
     );
   }
-  return { [name]: value };
+}
+
+function authHeaderFromToken(
+  headerType: string,
+  token: string,
+): RegistryAuthHeader {
+  const normalizedHeaderType = stripMatchingQuotes(headerType);
+  const normalizedToken = stripMatchingQuotes(token);
+  if (!normalizedHeaderType || !normalizedToken) {
+    throw new Error(
+      `${REGISTRY_AUTH_TOKEN_ENV} and ${REGISTRY_AUTH_HEADER_TYPE_ENV} must both be non-empty when either is set.`,
+    );
+  }
+
+  const lowerHeaderType = normalizedHeaderType.toLowerCase();
+  const tokenRef = `\${${REGISTRY_AUTH_TOKEN_ENV}}`;
+  if (lowerHeaderType === 'bearer' || lowerHeaderType === 'basic') {
+    const scheme = lowerHeaderType === 'bearer' ? 'Bearer' : 'Basic';
+    return {
+      name: 'Authorization',
+      value: `${scheme} ${normalizedToken}`,
+      mcpRemoteValue: `${scheme} ${tokenRef}`,
+      env: { [REGISTRY_AUTH_TOKEN_ENV]: normalizedToken },
+    };
+  }
+
+  validateHeaderName(normalizedHeaderType);
+  return {
+    name: normalizedHeaderType,
+    value: normalizedToken,
+    mcpRemoteValue: tokenRef,
+    env: { [REGISTRY_AUTH_TOKEN_ENV]: normalizedToken },
+  };
+}
+
+export function registryAuthHeader(): RegistryAuthHeader | undefined {
+  const token = process.env[REGISTRY_AUTH_TOKEN_ENV];
+  const headerType = process.env[REGISTRY_AUTH_HEADER_TYPE_ENV];
+  const hasToken = token !== undefined;
+  const hasHeaderType = headerType !== undefined;
+
+  if (hasToken || hasHeaderType) {
+    if (!hasToken || !hasHeaderType) {
+      throw new Error(
+        `${REGISTRY_AUTH_TOKEN_ENV} and ${REGISTRY_AUTH_HEADER_TYPE_ENV} must be set together.`,
+      );
+    }
+    return authHeaderFromToken(headerType ?? '', token ?? '');
+  }
+
+  return undefined;
+}
+
+export function registryFetchHeaders(): Record<string, string> | undefined {
+  const authHeader = registryAuthHeader();
+  if (!authHeader) {
+    return undefined;
+  }
+  return { [authHeader.name]: authHeader.value };
+}
+
+function getRegistryHost(): string | null {
+  const url = getRegistryUrl();
+  if (getLocalRegistryPath(url)) {
+    return null;
+  }
+
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
+
+export function registryMcpAuthHeader(
+  mcpUrl: string,
+): RegistryAuthHeader | undefined {
+  const authHeader = registryAuthHeader();
+  if (!authHeader) {
+    return undefined;
+  }
+
+  const registryHost = getRegistryHost();
+  if (!registryHost) {
+    return undefined;
+  }
+
+  try {
+    if (new URL(mcpUrl).host !== registryHost) {
+      return undefined;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return authHeader;
 }
 
 async function isCacheFresh(): Promise<boolean> {
@@ -149,8 +254,8 @@ export async function fetchRegistry(): Promise<Registry> {
     return memoryCache;
   }
 
-  // Validate auth config up front so a malformed MCPX_REGISTRY_AUTH_HEADER fails
-  // fast with a clear message instead of being masked as a network error below.
+  // Validate auth config up front so malformed auth fails fast with a clear
+  // message instead of being masked as a network error below.
   registryFetchHeaders();
 
   const url = getRegistryUrl();
