@@ -264,7 +264,9 @@ Environment Variables:
   MCP_DAEMON_SOCKET        Daemon socket path (default: ${socketPath})
   MCP_DAEMON_IDLE_MS       Daemon idle timeout in ms (default: 300000)
   MCPX_REGISTRY_URL        Custom registry URL (default: GitHub-hosted registry)
-  MCPX_REGISTRY_AUTH_HEADER  Auth header for the registry as "Name: value" (e.g. "x-api-key: <key>")
+  MCPX_REGISTRY_AUTH_TOKEN  Auth token for protected registries and registry-hosted MCP URLs
+  MCPX_REGISTRY_AUTH_HEADER_TYPE  Header name or scheme (e.g. x-api-key, bearer)
+  MCPX_REGISTRY_AUTH_HEADER  Legacy full auth header fallback as "Name: value"
 
 Examples:
   mcpx                                    # Show help

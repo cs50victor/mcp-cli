@@ -117,6 +117,9 @@ Useful environment variables:
 - `MCP_DAEMON_SOCKET`
 - `MCP_DAEMON_IDLE_MS`
 - `MCPX_REGISTRY_URL`
+- `MCPX_REGISTRY_AUTH_TOKEN`
+- `MCPX_REGISTRY_AUTH_HEADER_TYPE`
+- `MCPX_REGISTRY_AUTH_HEADER` (legacy fallback)
 
 ## License
 

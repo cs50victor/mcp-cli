@@ -1,20 +1,20 @@
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
-import { mkdtemp, writeFile, rm, realpath } from 'node:fs/promises';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  loadConfig,
+  buildAdHocConfig,
+  computeConfigHash,
+  findDisabledMatch,
   getServerConfig,
-  listServerNames,
   isHttpServer,
   isStdioServer,
-  loadDisabledTools,
-  findDisabledMatch,
   isToolAllowedByServerConfig,
-  computeConfigHash,
-  buildAdHocConfig,
+  listServerNames,
+  loadConfig,
+  loadDisabledTools,
 } from '../src/config';
-import { clearRegistryCache } from '../src/registry';
+import { clearRegistryCache, refreshRegistry } from '../src/registry';
 
 const LOCAL_REGISTRY_PATH = join(
   import.meta.dir,
@@ -25,6 +25,7 @@ const LOCAL_REGISTRY_PATH = join(
 
 describe('config', () => {
   const originalRegistryUrl = process.env.MCPX_REGISTRY_URL;
+  const originalFetch = globalThis.fetch;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -38,16 +39,20 @@ describe('config', () => {
   afterEach(async () => {
     clearRegistryCache();
     await rm(tempDir, { recursive: true, force: true });
-    delete process.env.MCP_CONFIG_PATH;
-    delete process.env.MCPX_USE_LOCAL_CONFIG;
-    delete process.env.MCP_STRICT_ENV;
-    delete process.env.MCP_DISABLED_TOOLS;
-    delete process.env.TEST_MCP_TOKEN;
-    delete process.env.ANOTHER_NONEXISTENT_VAR;
-    delete process.env.NONEXISTENT_VAR;
+    process.env.MCP_CONFIG_PATH = undefined;
+    process.env.MCPX_USE_LOCAL_CONFIG = undefined;
+    process.env.MCP_STRICT_ENV = undefined;
+    process.env.MCP_DISABLED_TOOLS = undefined;
+    process.env.MCPX_REGISTRY_AUTH_HEADER = undefined;
+    process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
+    process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
+    process.env.TEST_MCP_TOKEN = undefined;
+    process.env.ANOTHER_NONEXISTENT_VAR = undefined;
+    process.env.NONEXISTENT_VAR = undefined;
+    globalThis.fetch = originalFetch;
 
     if (originalRegistryUrl === undefined) {
-      delete process.env.MCPX_REGISTRY_URL;
+      process.env.MCPX_REGISTRY_URL = undefined;
     } else {
       process.env.MCPX_REGISTRY_URL = originalRegistryUrl;
     }
@@ -338,6 +343,103 @@ describe('config', () => {
       expect((server as { args?: string[] }).args).toContain(
         '@modelcontextprotocol/server-filesystem',
       );
+    });
+
+    test('injects_registry_auth_into_matching_mcp_remote_urls', async () => {
+      process.env.MCPX_REGISTRY_URL =
+        'https://tools.example.test/registry.json';
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = "'secret-key'";
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x-api-key';
+      globalThis.fetch = (async (
+        _input: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1],
+      ) => {
+        expect(init?.headers).toEqual({ 'x-api-key': 'secret-key' });
+        return new Response(
+          JSON.stringify({
+            version: 1,
+            servers: [
+              {
+                name: 'github',
+                description: 'GitHub MCP',
+                recommended: {
+                  command: 'bunx',
+                  args: [
+                    '-y',
+                    'mcp-remote',
+                    'https://tools.example.test/mcp/default/github/',
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }) as unknown as typeof fetch;
+      clearRegistryCache();
+      await refreshRegistry();
+
+      const config = await loadConfig(undefined, { allowEmpty: true });
+      const server = (await getServerConfig(config, 'github')) as {
+        command: string;
+        args: string[];
+        env: Record<string, string>;
+      };
+
+      expect(server.command).toBe('bunx');
+      expect(server.args).toEqual([
+        '-y',
+        'mcp-remote',
+        '--header',
+        'x-api-key: ${MCPX_REGISTRY_AUTH_TOKEN}',
+        'https://tools.example.test/mcp/default/github/',
+      ]);
+      expect(server.args.join(' ')).not.toContain('secret-key');
+      expect(server.env).toEqual({ MCPX_REGISTRY_AUTH_TOKEN: 'secret-key' });
+    });
+
+    test('does_not_inject_registry_auth_into_external_mcp_remote_urls', async () => {
+      process.env.MCPX_REGISTRY_URL =
+        'https://tools.example.test/registry.json';
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x-api-key';
+      globalThis.fetch = (async () => {
+        return new Response(
+          JSON.stringify({
+            version: 1,
+            servers: [
+              {
+                name: 'external',
+                description: 'External MCP',
+                recommended: {
+                  command: 'bunx',
+                  args: [
+                    '-y',
+                    'mcp-remote',
+                    'https://api.githubcopilot.com/mcp/',
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }) as unknown as typeof fetch;
+      clearRegistryCache();
+      await refreshRegistry();
+
+      const config = await loadConfig(undefined, { allowEmpty: true });
+      const server = (await getServerConfig(config, 'external')) as {
+        args: string[];
+        env?: Record<string, string>;
+      };
+
+      expect(server.args).toEqual([
+        '-y',
+        'mcp-remote',
+        'https://api.githubcopilot.com/mcp/',
+      ]);
+      expect(server.env).toBeUndefined();
     });
   });
 
