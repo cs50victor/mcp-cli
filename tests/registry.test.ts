@@ -4,6 +4,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import {
   getRegistryUrl,
+  registryFetchHeaders,
   fetchRegistry,
   findServer,
   clearRegistryCache,
@@ -42,6 +43,48 @@ describe('registry', () => {
       process.env.MCPX_REGISTRY_URL = 'http://localhost:8000/custom.json';
       const url = getRegistryUrl();
       expect(url).toBe('http://localhost:8000/custom.json');
+    });
+  });
+
+  describe('registryFetchHeaders', () => {
+    const originalAuth = process.env.MCPX_REGISTRY_AUTH_HEADER;
+
+    afterEach(() => {
+      if (originalAuth === undefined) {
+        delete process.env.MCPX_REGISTRY_AUTH_HEADER;
+      } else {
+        process.env.MCPX_REGISTRY_AUTH_HEADER = originalAuth;
+      }
+    });
+
+    test('should_return_undefined_when_unset', () => {
+      delete process.env.MCPX_REGISTRY_AUTH_HEADER;
+      expect(registryFetchHeaders()).toBeUndefined();
+    });
+
+    test('should_parse_x_api_key_header', () => {
+      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key: secret-key';
+      expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
+    });
+
+    test('should_preserve_scheme_and_colons_in_value', () => {
+      process.env.MCPX_REGISTRY_AUTH_HEADER = 'Authorization: Bearer a:b';
+      expect(registryFetchHeaders()).toEqual({ Authorization: 'Bearer a:b' });
+    });
+
+    test('should_trim_surrounding_whitespace', () => {
+      process.env.MCPX_REGISTRY_AUTH_HEADER = '  x-api-key :   secret-key  ';
+      expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
+    });
+
+    test('should_throw_when_no_colon', () => {
+      process.env.MCPX_REGISTRY_AUTH_HEADER = 'secret-key';
+      expect(() => registryFetchHeaders()).toThrow('Name: value');
+    });
+
+    test('should_throw_when_value_empty', () => {
+      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key:';
+      expect(() => registryFetchHeaders()).toThrow('Name: value');
     });
   });
 

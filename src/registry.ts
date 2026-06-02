@@ -47,6 +47,26 @@ export function getRegistryUrl(): string {
   return process.env.MCPX_REGISTRY_URL || DEFAULT_REGISTRY_URL;
 }
 
+// Authenticated registries (e.g. a self-hosted tool server) gate /registry.json
+// behind an auth header. The operator supplies the full header so mcpx never has
+// to guess the scheme: MCPX_REGISTRY_AUTH_HEADER="x-api-key: <key>" or
+// "Authorization: Bearer <token>". Unset by default; the public registry is open.
+export function registryFetchHeaders(): Record<string, string> | undefined {
+  const header = process.env.MCPX_REGISTRY_AUTH_HEADER?.trim();
+  if (!header) {
+    return undefined;
+  }
+  const separator = header.indexOf(':');
+  const name = separator === -1 ? '' : header.slice(0, separator).trim();
+  const value = separator === -1 ? '' : header.slice(separator + 1).trim();
+  if (!name || !value) {
+    throw new Error(
+      'MCPX_REGISTRY_AUTH_HEADER must be "Name: value", e.g. "x-api-key: <key>" or "Authorization: Bearer <token>".',
+    );
+  }
+  return { [name]: value };
+}
+
 async function isCacheFresh(): Promise<boolean> {
   try {
     const { mtime } = await stat(getCachePath());
@@ -106,7 +126,7 @@ async function fetchFreshRegistry(url: string): Promise<Registry> {
     return registry;
   }
 
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: registryFetchHeaders() });
   if (!response.ok) {
     throw new Error(
       `Failed to fetch registry: ${response.status} ${response.statusText}`,
@@ -128,6 +148,10 @@ export async function fetchRegistry(): Promise<Registry> {
   if (memoryCache) {
     return memoryCache;
   }
+
+  // Validate auth config up front so a malformed MCPX_REGISTRY_AUTH_HEADER fails
+  // fast with a clear message instead of being masked as a network error below.
+  registryFetchHeaders();
 
   const url = getRegistryUrl();
 

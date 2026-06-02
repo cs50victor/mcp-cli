@@ -295,7 +295,7 @@ export function registryFetchError(url: string, cause: string): CliError {
     message: `Failed to fetch registry from ${url}`,
     details: cause,
     suggestion:
-      'Check network connectivity. Use MCPX_REGISTRY_URL to specify a different registry.',
+      'Check network connectivity. Use MCPX_REGISTRY_URL to point at a different registry, or MCPX_REGISTRY_AUTH_HEADER (e.g. "x-api-key: <key>") if it needs auth.',
   };
 }
 
