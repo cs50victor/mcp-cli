@@ -34,9 +34,6 @@ const DEFAULT_REGISTRY_URL =
 const STALE_MS = 3600 * 1000; // 1 hour
 const REGISTRY_AUTH_TOKEN_ENV = 'MCPX_REGISTRY_AUTH_TOKEN';
 const REGISTRY_AUTH_HEADER_TYPE_ENV = 'MCPX_REGISTRY_AUTH_HEADER_TYPE';
-const REGISTRY_AUTH_HEADER_ENV = 'MCPX_REGISTRY_AUTH_HEADER';
-const REGISTRY_RESOLVED_AUTH_VALUE_ENV =
-  'MCPX_REGISTRY_RESOLVED_AUTH_HEADER_VALUE';
 
 let memoryCache: Registry | null = null;
 
@@ -59,12 +56,6 @@ export function getRegistryUrl(): string {
   return process.env.MCPX_REGISTRY_URL || DEFAULT_REGISTRY_URL;
 }
 
-function readEnv(name: string): string | undefined {
-  return Object.prototype.hasOwnProperty.call(process.env, name)
-    ? process.env[name]
-    : undefined;
-}
-
 function stripMatchingQuotes(value: string): string {
   const trimmed = value.trim();
   if (
@@ -77,31 +68,12 @@ function stripMatchingQuotes(value: string): string {
   return trimmed;
 }
 
-function requireHeaderName(name: string, source: string): void {
+function validateHeaderName(name: string): void {
   if (!/^[A-Za-z0-9_-]+$/.test(name)) {
     throw new Error(
-      `${source} must resolve to a valid HTTP header name, e.g. "x-api-key" or "Authorization".`,
+      `${REGISTRY_AUTH_HEADER_TYPE_ENV} must be a valid HTTP header name or auth scheme, e.g. "x-api-key" or "bearer".`,
     );
   }
-}
-
-function parseFullAuthHeader(rawHeader: string): RegistryAuthHeader {
-  const header = stripMatchingQuotes(rawHeader);
-  const separator = header.indexOf(':');
-  const name = separator === -1 ? '' : header.slice(0, separator).trim();
-  const value = separator === -1 ? '' : header.slice(separator + 1).trim();
-  if (!name || !value) {
-    throw new Error(
-      'MCPX_REGISTRY_AUTH_HEADER must be "Name: value", e.g. "x-api-key: <key>" or "Authorization: Bearer <token>".',
-    );
-  }
-  requireHeaderName(name, REGISTRY_AUTH_HEADER_ENV);
-  return {
-    name,
-    value,
-    mcpRemoteValue: `\${${REGISTRY_RESOLVED_AUTH_VALUE_ENV}}`,
-    env: { [REGISTRY_RESOLVED_AUTH_VALUE_ENV]: value },
-  };
 }
 
 function authHeaderFromToken(
@@ -128,7 +100,7 @@ function authHeaderFromToken(
     };
   }
 
-  requireHeaderName(normalizedHeaderType, REGISTRY_AUTH_HEADER_TYPE_ENV);
+  validateHeaderName(normalizedHeaderType);
   return {
     name: normalizedHeaderType,
     value: normalizedToken,
@@ -137,29 +109,22 @@ function authHeaderFromToken(
   };
 }
 
-// Authenticated registries (e.g. a self-hosted tool server) can use split
-// token/header-type env vars so shell or dotenv quoting cannot become part of
-// the header. The legacy full-header env remains a fallback for compatibility.
 export function registryAuthHeader(): RegistryAuthHeader | undefined {
-  const token = readEnv(REGISTRY_AUTH_TOKEN_ENV);
-  const headerType = readEnv(REGISTRY_AUTH_HEADER_TYPE_ENV);
+  const token = process.env[REGISTRY_AUTH_TOKEN_ENV];
+  const headerType = process.env[REGISTRY_AUTH_HEADER_TYPE_ENV];
   const hasToken = token !== undefined;
   const hasHeaderType = headerType !== undefined;
 
   if (hasToken || hasHeaderType) {
     if (!hasToken || !hasHeaderType) {
       throw new Error(
-        `${REGISTRY_AUTH_TOKEN_ENV} and ${REGISTRY_AUTH_HEADER_TYPE_ENV} must be set together. ${REGISTRY_AUTH_HEADER_ENV} is only used when both are unset.`,
+        `${REGISTRY_AUTH_TOKEN_ENV} and ${REGISTRY_AUTH_HEADER_TYPE_ENV} must be set together.`,
       );
     }
     return authHeaderFromToken(headerType ?? '', token ?? '');
   }
 
-  const legacyHeader = readEnv(REGISTRY_AUTH_HEADER_ENV);
-  if (legacyHeader === undefined || !legacyHeader.trim()) {
-    return undefined;
-  }
-  return parseFullAuthHeader(legacyHeader);
+  return undefined;
 }
 
 export function registryFetchHeaders(): Record<string, string> | undefined {
@@ -170,22 +135,14 @@ export function registryFetchHeaders(): Record<string, string> | undefined {
   return { [authHeader.name]: authHeader.value };
 }
 
-function getRegistryUrlPrefix(): string | null {
+function getRegistryHost(): string | null {
   const url = getRegistryUrl();
   if (getLocalRegistryPath(url)) {
     return null;
   }
 
   try {
-    const parsed = new URL(url);
-    parsed.search = '';
-    parsed.hash = '';
-    if (parsed.pathname.endsWith('/registry.json')) {
-      parsed.pathname = parsed.pathname.slice(0, -'registry.json'.length);
-    } else if (!parsed.pathname.endsWith('/')) {
-      parsed.pathname = `${parsed.pathname}/`;
-    }
-    return parsed.toString();
+    return new URL(url).host;
   } catch {
     return null;
   }
@@ -199,16 +156,13 @@ export function registryMcpAuthHeader(
     return undefined;
   }
 
-  const registryPrefix = getRegistryUrlPrefix();
-  if (!registryPrefix) {
+  const registryHost = getRegistryHost();
+  if (!registryHost) {
     return undefined;
   }
 
   try {
-    const parsedMcpUrl = new URL(mcpUrl);
-    parsedMcpUrl.search = '';
-    parsedMcpUrl.hash = '';
-    if (!parsedMcpUrl.toString().startsWith(registryPrefix)) {
+    if (new URL(mcpUrl).host !== registryHost) {
       return undefined;
     }
   } catch {
@@ -300,8 +254,8 @@ export async function fetchRegistry(): Promise<Registry> {
     return memoryCache;
   }
 
-  // Validate auth config up front so a malformed MCPX_REGISTRY_AUTH_HEADER fails
-  // fast with a clear message instead of being masked as a network error below.
+  // Validate auth config up front so malformed auth fails fast with a clear
+  // message instead of being masked as a network error below.
   registryFetchHeaders();
 
   const url = getRegistryUrl();

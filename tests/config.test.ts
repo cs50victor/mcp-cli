@@ -43,7 +43,6 @@ describe('config', () => {
     process.env.MCPX_USE_LOCAL_CONFIG = undefined;
     process.env.MCP_STRICT_ENV = undefined;
     process.env.MCP_DISABLED_TOOLS = undefined;
-    process.env.MCPX_REGISTRY_AUTH_HEADER = undefined;
     process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
     process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
     process.env.TEST_MCP_TOKEN = undefined;

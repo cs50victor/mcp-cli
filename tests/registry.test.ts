@@ -49,16 +49,10 @@ describe('registry', () => {
   });
 
   describe('registryFetchHeaders', () => {
-    const originalAuth = process.env.MCPX_REGISTRY_AUTH_HEADER;
     const originalAuthToken = process.env.MCPX_REGISTRY_AUTH_TOKEN;
     const originalAuthHeaderType = process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE;
 
     afterEach(() => {
-      if (originalAuth === undefined) {
-        process.env.MCPX_REGISTRY_AUTH_HEADER = undefined;
-      } else {
-        process.env.MCPX_REGISTRY_AUTH_HEADER = originalAuth;
-      }
       if (originalAuthToken === undefined) {
         process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
       } else {
@@ -72,44 +66,14 @@ describe('registry', () => {
     });
 
     test('should_return_undefined_when_unset', () => {
-      process.env.MCPX_REGISTRY_AUTH_HEADER = undefined;
       process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
       process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
       expect(registryFetchHeaders()).toBeUndefined();
     });
 
-    test('should_parse_x_api_key_header', () => {
-      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key: secret-key';
-      expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
-    });
-
-    test('should_preserve_scheme_and_colons_in_value', () => {
-      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'Authorization: Bearer a:b';
-      expect(registryFetchHeaders()).toEqual({ Authorization: 'Bearer a:b' });
-    });
-
-    test('should_trim_surrounding_whitespace', () => {
-      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = '  x-api-key :   secret-key  ';
-      expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
-    });
-
-    test('should_strip_matching_quotes_from_legacy_header', () => {
-      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = "'x-api-key: secret-key'";
-      expect(registryFetchHeaders()).toEqual({ 'x-api-key': 'secret-key' });
-    });
-
     test('should_derive_header_from_token_and_header_type', () => {
       process.env.MCPX_REGISTRY_AUTH_TOKEN = "'secret-key'";
       process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x-api-key';
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'Authorization: Bearer legacy';
 
       const authHeader = registryAuthHeader();
 
@@ -135,26 +99,18 @@ describe('registry', () => {
     test('should_throw_on_partial_token_header_type_config', () => {
       process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
       process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key: legacy';
 
       expect(() => registryFetchHeaders()).toThrow('must be set together');
     });
 
-    test('should_throw_when_no_colon', () => {
-      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'secret-key';
-      expect(() => registryFetchHeaders()).toThrow('Name: value');
+    test('should_throw_when_header_type_is_invalid', () => {
+      process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
+      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = 'x api key';
+
+      expect(() => registryFetchHeaders()).toThrow('valid HTTP header name');
     });
 
-    test('should_throw_when_value_empty', () => {
-      process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
-      process.env.MCPX_REGISTRY_AUTH_HEADER = 'x-api-key:';
-      expect(() => registryFetchHeaders()).toThrow('Name: value');
-    });
-
-    test('should_match_mcp_urls_under_registry_url_prefix', () => {
+    test('should_match_mcp_urls_on_registry_host', () => {
       process.env.MCPX_REGISTRY_URL =
         'https://tools.example.test/team/registry.json?disable=github';
       process.env.MCPX_REGISTRY_AUTH_TOKEN = 'secret-key';
@@ -165,6 +121,9 @@ describe('registry', () => {
       ).toBeDefined();
       expect(
         registryMcpAuthHeader('https://tools.example.test/other/mcp/github/'),
+      ).toBeDefined();
+      expect(
+        registryMcpAuthHeader('https://other.example.test/team/mcp/github/'),
       ).toBeUndefined();
     });
   });
