@@ -468,10 +468,12 @@ export async function getServerConfig(
         `[mcpx] Using registry config in memory for '${serverName}'.`,
       );
     }
-    if (registryServer.envVars?.length) {
-      console.error(
-        `[mcpx] Required env vars: ${registryServer.envVars.join(', ')}`,
-      );
+    const missingEnvVars = getMissingEnvVars(
+      registryServer.envVars,
+      serverConfig,
+    );
+    if (missingEnvVars.length) {
+      console.error(`[mcpx] Environment: ${missingEnvVars.join(', ')}`);
     }
     if (registryServer.notes) {
       console.error(`[mcpx] Note: ${registryServer.notes}`);
@@ -492,6 +494,24 @@ export async function getServerConfig(
       ),
     ),
   );
+}
+
+function isEnvValueSet(value: string | undefined): boolean {
+  return value !== undefined && value !== '';
+}
+
+function getMissingEnvVars(
+  envVars: string[] | undefined,
+  config: ServerConfig,
+): string[] {
+  if (!envVars?.length) return [];
+
+  return envVars.filter((name) => {
+    if (isStdioServer(config) && isEnvValueSet(config.env?.[name])) {
+      return false;
+    }
+    return !isEnvValueSet(process.env[name]);
+  });
 }
 
 function isMcpRemoteConfig(config: StdioServerConfig): boolean {

@@ -223,7 +223,7 @@ export function formatRegistryServer(server: RegistryServer): string {
 
   if (server.envVars && server.envVars.length > 0) {
     lines.push('');
-    lines.push(`${color('Required environment variables:', colors.bold)}`);
+    lines.push(`${color('Environment variables:', colors.bold)}`);
     lines.push(`  ${server.envVars.join(', ')}`);
   }
 
