@@ -46,6 +46,9 @@ describe('config', () => {
     process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
     process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
     process.env.TEST_MCP_TOKEN = undefined;
+    process.env.TEST_CONFIG_ENV_SET = undefined;
+    process.env.TEST_CONFIG_ENV_MISSING = undefined;
+    process.env.TEST_CONFIG_ENV_OTHER = undefined;
     process.env.ANOTHER_NONEXISTENT_VAR = undefined;
     process.env.NONEXISTENT_VAR = undefined;
     globalThis.fetch = originalFetch;
@@ -342,6 +345,80 @@ describe('config', () => {
       expect((server as { args?: string[] }).args).toContain(
         '@modelcontextprotocol/server-filesystem',
       );
+    });
+
+    test('registry env notice filters variables already set locally', async () => {
+      const registryPath = join(tempDir, 'registry.json');
+      await writeFile(
+        registryPath,
+        JSON.stringify({
+          version: 1,
+          servers: [
+            {
+              name: 'env-test',
+              description: 'Env test',
+              recommended: { command: 'echo', args: ['ok'] },
+              envVars: ['TEST_CONFIG_ENV_SET', 'TEST_CONFIG_ENV_MISSING'],
+            },
+          ],
+        }),
+      );
+      process.env.MCPX_REGISTRY_URL = registryPath;
+      process.env.TEST_CONFIG_ENV_SET = 'set';
+      process.env.TEST_CONFIG_ENV_MISSING = undefined;
+      const messages: string[] = [];
+      const originalConsoleError = console.error;
+      console.error = (message?: unknown) => {
+        messages.push(String(message));
+      };
+      clearRegistryCache();
+
+      try {
+        const config = await loadConfig(undefined, { allowEmpty: true });
+        await getServerConfig(config, 'env-test');
+      } finally {
+        console.error = originalConsoleError;
+      }
+
+      expect(messages).toContain('[mcpx] Environment: TEST_CONFIG_ENV_MISSING');
+      expect(messages.join('\n')).not.toContain('TEST_CONFIG_ENV_SET');
+      expect(messages.join('\n')).not.toContain('Required env vars');
+    });
+
+    test('registry env notice is omitted when all variables are set locally', async () => {
+      const registryPath = join(tempDir, 'registry.json');
+      await writeFile(
+        registryPath,
+        JSON.stringify({
+          version: 1,
+          servers: [
+            {
+              name: 'env-test',
+              description: 'Env test',
+              recommended: { command: 'echo', args: ['ok'] },
+              envVars: ['TEST_CONFIG_ENV_SET', 'TEST_CONFIG_ENV_OTHER'],
+            },
+          ],
+        }),
+      );
+      process.env.MCPX_REGISTRY_URL = registryPath;
+      process.env.TEST_CONFIG_ENV_SET = 'set';
+      process.env.TEST_CONFIG_ENV_OTHER = 'other';
+      const messages: string[] = [];
+      const originalConsoleError = console.error;
+      console.error = (message?: unknown) => {
+        messages.push(String(message));
+      };
+      clearRegistryCache();
+
+      try {
+        const config = await loadConfig(undefined, { allowEmpty: true });
+        await getServerConfig(config, 'env-test');
+      } finally {
+        console.error = originalConsoleError;
+      }
+
+      expect(messages.join('\n')).not.toContain('[mcpx] Environment:');
     });
 
     test('injects_registry_auth_into_matching_mcp_remote_urls', async () => {

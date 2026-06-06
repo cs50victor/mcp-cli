@@ -41,10 +41,26 @@ describe('subcommand sync', () => {
       expect(result.stderr.toString()).toContain('start|stop|status');
     });
 
+    test('daemon --help', async () => {
+      const result = await $`bun run ${CLI_PATH} daemon --help`.nothrow();
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toContain('mcpx daemon');
+      expect(result.stdout.toString()).toContain('mcpx daemon start');
+      expect(result.stderr.toString()).toBe('');
+    });
+
     test('registry', async () => {
       const result =
         await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry`.nothrow();
       expect(result.stderr.toString()).not.toContain('Did you mean');
+    });
+
+    test('registry --help', async () => {
+      const result =
+        await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry --help`.nothrow();
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toContain('mcpx registry');
+      expect(result.stderr.toString()).toBe('');
     });
 
     test('registry refresh', async () => {

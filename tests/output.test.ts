@@ -202,7 +202,7 @@ describe('output', () => {
       };
 
       const output = formatRegistryServer(server);
-      expect(output).toContain('Required environment variables');
+      expect(output).toContain('Environment variables');
       expect(output).toContain('BRAVE_API_KEY');
     });
 

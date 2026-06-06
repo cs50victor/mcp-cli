@@ -54,7 +54,7 @@ interface ParsedArgs {
   inlineArgs?: string[];
   inlineEnvs?: string[];
   inlineUrl?: string;
-  daemonAction?: 'start' | 'stop' | 'status';
+  daemonAction?: 'help' | 'start' | 'stop' | 'status';
   daemonServers?: string[];
   daemonForce?: boolean;
   registryAction?: 'help' | 'list' | 'get' | 'refresh';
@@ -76,9 +76,12 @@ function parseArgs(args: string[]): ParsedArgs {
     switch (arg) {
       case '-h':
       case '--help':
-        if (positional.length > 0) break;
-        result.command = 'help';
-        return result;
+        if (positional.length === 0) {
+          result.command = 'help';
+          return result;
+        }
+        positional.push(arg);
+        break;
 
       case '-v':
       case '--version':
@@ -163,14 +166,17 @@ function parseArgs(args: string[]): ParsedArgs {
     result.command = 'config';
   } else if (positional[0] === 'daemon') {
     result.command = 'daemon';
-    const action = positional[1] as 'start' | 'stop' | 'status' | undefined;
-    if (!action || !['start', 'stop', 'status'].includes(action)) {
+    const action = positional[1];
+    if (action === 'help' || action === '-h' || action === '--help') {
+      result.daemonAction = 'help';
+    } else if (!action || !['start', 'stop', 'status'].includes(action)) {
       console.error(
         formatCliError(missingArgumentError('daemon', 'start|stop|status')),
       );
       process.exit(ErrorCode.CLIENT_ERROR);
+    } else {
+      result.daemonAction = action as 'start' | 'stop' | 'status';
     }
-    result.daemonAction = action;
     // Collect server names after the action (e.g., daemon start server1 server2)
     if (positional.length > 2) {
       result.daemonServers = positional.slice(2);
@@ -178,7 +184,12 @@ function parseArgs(args: string[]): ParsedArgs {
   } else if (positional[0] === 'registry') {
     result.command = 'registry';
     const action = positional[1];
-    if (!action) {
+    if (
+      !action ||
+      action === 'help' ||
+      action === '-h' ||
+      action === '--help'
+    ) {
       result.registryAction = 'help';
     } else if (action === 'list') {
       result.registryAction = 'list';
@@ -309,6 +320,27 @@ Default Resolution:
 `);
 }
 
+function printDaemonHelp(): void {
+  console.log(`mcpx daemon - Manage persistent MCP server connections
+
+Usage:
+  mcpx daemon start                  Start daemon process
+  mcpx daemon start <server...>      Start registry-backed server(s)
+  mcpx daemon stop                   Stop daemon entirely
+  mcpx daemon stop <server>          Stop a specific server, keep daemon running
+  mcpx daemon stop --force           Force stop even with active server connections
+  mcpx daemon status                 Show daemon status and active servers
+
+Options:
+  -h, --help                         Show this help message
+  -c, --config <json|path>           Provide full MCP config as JSON or file path
+  --force                            Bypass multi-connection safety for daemon stop
+
+Environment:
+  MCP_DAEMON_SOCKET                  Daemon socket path
+  MCP_DAEMON_IDLE_MS                 Daemon idle timeout in milliseconds`);
+}
+
 function validateAndSynthesizeInlineFlags(args: ParsedArgs): void {
   const hasInline = args.inlineCommand || args.inlineUrl;
 
@@ -430,6 +462,9 @@ async function main(): Promise<void> {
 
     case 'daemon':
       switch (args.daemonAction) {
+        case 'help':
+          printDaemonHelp();
+          break;
         case 'start': {
           // NOTE(victor): subprocess bypasses config - receives server configs via IPC
           if (process.env._MCPX_DAEMON === '1') {
