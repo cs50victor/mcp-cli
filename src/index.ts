@@ -274,6 +274,7 @@ Environment Variables:
   MCP_STRICT_ENV           Set to "false" to warn on missing env vars (default: true)
   MCP_DAEMON_SOCKET        Daemon socket path (default: ${socketPath})
   MCP_DAEMON_IDLE_MS       Daemon idle timeout in ms (default: 300000)
+  MCP_DAEMON_AUTO          Comma-separated servers to always route via the daemon
   MCPX_REGISTRY_URL        Custom registry URL (default: GitHub-hosted registry)
   MCPX_REGISTRY_AUTH_TOKEN  Auth token for protected registries and registry-hosted MCP URLs
   MCPX_REGISTRY_AUTH_HEADER_TYPE  Header name or scheme (e.g. x-api-key, bearer)
@@ -314,6 +315,8 @@ Daemon Mode (persistent connections for stateful servers):
   Without daemon: each 'mcpx server/tool' call connects, runs, disconnects.
   With daemon: 'mcpx daemon start server' keeps connection alive, then
                'mcpx server/tool' reuses that persistent connection.
+  Auto: set MCP_DAEMON_AUTO=server1,server2 to always route those servers
+        through the daemon (auto-started on first call) - no 'daemon start'.
 
 Default Resolution:
   mcpx resolves servers from the registry and invokes them in memory.
@@ -338,7 +341,8 @@ Options:
 
 Environment:
   MCP_DAEMON_SOCKET                  Daemon socket path
-  MCP_DAEMON_IDLE_MS                 Daemon idle timeout in milliseconds`);
+  MCP_DAEMON_IDLE_MS                 Daemon idle timeout in milliseconds
+  MCP_DAEMON_AUTO                    Comma-separated servers to always route via the daemon`);
 }
 
 function validateAndSynthesizeInlineFlags(args: ParsedArgs): void {
