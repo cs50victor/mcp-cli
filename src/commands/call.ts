@@ -12,11 +12,16 @@ import {
   type ServerConfig,
   findDisabledMatch,
   getServerConfig,
+  isDaemonAutoServer,
   isToolAllowedByServerConfig,
   loadConfig,
   loadDisabledTools,
 } from '../config.js';
-import { callViaDaemon, isServerInDaemon } from '../daemon.js';
+import {
+  callViaDaemon,
+  ensureDaemonRunning,
+  isServerInDaemon,
+} from '../daemon.js';
 import {
   ErrorCode,
   formatCliError,
@@ -144,7 +149,21 @@ export async function callCommand(options: CallOptions): Promise<void> {
     process.exit(ErrorCode.CLIENT_ERROR);
   }
 
-  if (await isServerInDaemon(serverName)) {
+  const forceDaemon = isDaemonAutoServer(serverName);
+  if (forceDaemon) {
+    try {
+      await ensureDaemonRunning();
+    } catch (error) {
+      console.error(
+        formatCliError(
+          serverConnectionError(serverName, (error as Error).message),
+        ),
+      );
+      process.exit(ErrorCode.NETWORK_ERROR);
+    }
+  }
+
+  if (forceDaemon || (await isServerInDaemon(serverName))) {
     debug(`routing call through daemon: ${serverName}/${toolName}`);
     let daemonConfig: ServerConfig | undefined;
     let configSource: string | undefined;

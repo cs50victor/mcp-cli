@@ -7,6 +7,7 @@ import {
   computeConfigHash,
   findDisabledMatch,
   getServerConfig,
+  isDaemonAutoServer,
   isHttpServer,
   isStdioServer,
   isToolAllowedByServerConfig,
@@ -43,6 +44,7 @@ describe('config', () => {
     process.env.MCPX_USE_LOCAL_CONFIG = undefined;
     process.env.MCP_STRICT_ENV = undefined;
     process.env.MCP_DISABLED_TOOLS = undefined;
+    process.env.MCP_DAEMON_AUTO = undefined;
     process.env.MCPX_REGISTRY_AUTH_TOKEN = undefined;
     process.env.MCPX_REGISTRY_AUTH_HEADER_TYPE = undefined;
     process.env.TEST_MCP_TOKEN = undefined;
@@ -585,6 +587,25 @@ describe('config', () => {
     test('loadDisabledTools returns empty map when no config', async () => {
       const patterns = await loadDisabledTools();
       expect(patterns.size).toBe(0);
+    });
+  });
+
+  describe('isDaemonAutoServer', () => {
+    test('returns false when MCP_DAEMON_AUTO is unset', () => {
+      expect(isDaemonAutoServer('browser')).toBe(false);
+    });
+
+    test('matches a server listed in MCP_DAEMON_AUTO', () => {
+      process.env.MCP_DAEMON_AUTO = 'browser, playwright';
+      expect(isDaemonAutoServer('browser')).toBe(true);
+      expect(isDaemonAutoServer('playwright')).toBe(true);
+      expect(isDaemonAutoServer('supabase')).toBe(false);
+    });
+
+    test('ignores empty entries and surrounding whitespace', () => {
+      process.env.MCP_DAEMON_AUTO = ' , browser ,';
+      expect(isDaemonAutoServer('browser')).toBe(true);
+      expect(isDaemonAutoServer('')).toBe(false);
     });
   });
 

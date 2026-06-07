@@ -226,6 +226,45 @@ interface DaemonResponse {
   error?: string;
 }
 
+/**
+ * Spawn the detached daemon process and wait until it accepts requests.
+ * Clears any stale socket first. Returns the child pid and whether the daemon
+ * became reachable. No logging - callers decide how to report success/failure.
+ */
+async function spawnDaemonProcess(): Promise<{ ok: boolean; pid: number }> {
+  const socketPath = getSocketPath();
+  if (existsSync(socketPath)) {
+    unlinkSync(socketPath);
+  }
+
+  const spawnArgs = getDaemonSpawnArgs(process.argv[1], process.execPath);
+  const proc = Bun.spawn(spawnArgs, {
+    detached: true,
+    env: { ...process.env, _MCPX_DAEMON: '1' },
+    stdio: ['ignore', 'ignore', 'ignore'],
+  });
+  proc.unref();
+
+  await Bun.sleep(300);
+  return { ok: await isDaemonRunning(), pid: proc.pid };
+}
+
+/**
+ * Ensure the daemon process is running, starting it quietly if needed.
+ * Used to auto-route stateful servers (MCP_DAEMON_AUTO) without an explicit
+ * `mcpx daemon start`. Throws if the daemon cannot be started.
+ */
+export async function ensureDaemonRunning(): Promise<void> {
+  if (await isDaemonRunning()) {
+    return;
+  }
+  const { ok } = await spawnDaemonProcess();
+  if (!ok) {
+    throw new Error(`Failed to auto-start daemon (socket: ${getSocketPath()})`);
+  }
+  debug('daemon: auto-started for stateful server');
+}
+
 export async function startDaemon(
   config?: McpServersConfig,
   serverNames?: string[],
@@ -239,20 +278,8 @@ export async function startDaemon(
   const daemonWasRunning = await isDaemonRunning();
 
   if (!daemonWasRunning) {
-    if (existsSync(socketPath)) {
-      unlinkSync(socketPath);
-    }
-
-    const spawnArgs = getDaemonSpawnArgs(process.argv[1], process.execPath);
-    const proc = Bun.spawn(spawnArgs, {
-      detached: true,
-      env: { ...process.env, _MCPX_DAEMON: '1' },
-      stdio: ['ignore', 'ignore', 'ignore'],
-    });
-    proc.unref();
-
-    await Bun.sleep(300);
-    if (!(await isDaemonRunning())) {
+    const { ok, pid } = await spawnDaemonProcess();
+    if (!ok) {
       console.error('Failed to start daemon process');
       console.error(`  Socket path: ${socketPath}`);
       console.error(
@@ -261,7 +288,7 @@ export async function startDaemon(
       process.exit(1);
     }
 
-    console.log(`Daemon started (pid ${proc.pid})`);
+    console.log(`Daemon started (pid ${pid})`);
     console.log(`  Socket: ${socketPath}`);
   }
 

@@ -635,6 +635,23 @@ export function findDisabledMatch(
   return undefined;
 }
 
+/**
+ * Servers listed in MCP_DAEMON_AUTO are always routed through the persistent
+ * daemon, so sequential calls share one connection without an explicit
+ * `mcpx daemon start`. Required for stateful servers (browser sessions,
+ * database transactions) used in registry mode, where there is no per-server
+ * config entry to annotate.
+ */
+export function isDaemonAutoServer(serverName: string): boolean {
+  const env = process.env.MCP_DAEMON_AUTO;
+  if (!env) return false;
+  return env
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .includes(serverName);
+}
+
 export function getIncludePatterns(
   serverConfig: ServerConfig,
 ): string[] | undefined {
