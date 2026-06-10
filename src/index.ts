@@ -6,6 +6,8 @@ import { configCommand } from './commands/config.js';
 import { infoCommand } from './commands/info.js';
 import { listCommand } from './commands/list.js';
 import { registryCommand } from './commands/registry.js';
+import { resourcesCommand } from './commands/resources.js';
+import { skillsCommand } from './commands/skills.js';
 import {
   DEFAULT_CONCURRENCY,
   DEFAULT_MAX_RETRIES,
@@ -31,9 +33,24 @@ import {
 import { VERSION } from './version.js';
 
 /** Positional subcommands - used for parsing and typo detection */
-const SUBCOMMANDS = ['config', 'daemon', 'list', 'ls', 'registry'] as const;
+const SUBCOMMANDS = [
+  'config',
+  'daemon',
+  'list',
+  'ls',
+  'registry',
+  'resources',
+  'skills',
+] as const;
 
-const VISIBLE_SUBCOMMANDS = ['daemon', 'list', 'ls', 'registry'] as const;
+const VISIBLE_SUBCOMMANDS = [
+  'daemon',
+  'list',
+  'ls',
+  'registry',
+  'resources',
+  'skills',
+] as const;
 
 interface ParsedArgs {
   command:
@@ -43,10 +60,13 @@ interface ParsedArgs {
     | 'config'
     | 'daemon'
     | 'registry'
+    | 'resources'
+    | 'skills'
     | 'help'
     | 'version';
   target?: string;
   args?: string;
+  subcommandHelp?: boolean;
   json: boolean;
   withDescriptions: boolean;
   configInput?: string;
@@ -181,6 +201,22 @@ function parseArgs(args: string[]): ParsedArgs {
     if (positional.length > 2) {
       result.daemonServers = positional.slice(2);
     }
+  } else if (positional[0] === 'resources' || positional[0] === 'skills') {
+    result.command = positional[0];
+    const server = positional[1];
+    if (server === 'help' || server === '-h' || server === '--help') {
+      result.subcommandHelp = true;
+    } else if (!server) {
+      console.error(
+        formatCliError(missingArgumentError(positional[0], '<server>')),
+      );
+      process.exit(ErrorCode.CLIENT_ERROR);
+    } else {
+      result.target = server;
+      if (positional.length > 2) {
+        result.args = positional[2];
+      }
+    }
   } else if (positional[0] === 'registry') {
     result.command = 'registry';
     const action = positional[1];
@@ -242,6 +278,10 @@ Usage:
   mcpx [options] <server>                  Show server tools and parameters
   mcpx [options] <server>/<tool>           Show tool schema and description
   mcpx [options] <server>/<tool> <json>    Call tool with arguments
+  mcpx resources <server>                  List server resources and templates
+  mcpx resources <server> <uri>            Read a resource by URI
+  mcpx skills <server>                     List skills served by a server
+  mcpx skills <server> <name|uri>          Load a skill's SKILL.md by name or URI
   mcpx daemon <start|stop|status>          Manage persistent connection daemon
   mcpx registry                            Show registry command help
   mcpx registry list                       List available MCP servers from registry
@@ -293,6 +333,13 @@ Inline Server (use any MCP server without registry or config file):
   mcpx --url https://example.com/mcp remote                      # HTTP server
   mcpx --command cmd --env API_KEY=xxx --arg srv server/tool      # With env var
 
+Resources & Skills (skills are served as MCP resources, SEP-2640):
+  mcpx resources myserver                 # List resources and templates
+  mcpx resources myserver file:///a.txt   # Read a resource by URI
+  mcpx skills myserver                    # List skills (skill://index.json)
+  mcpx skills myserver git-workflow       # Load skill://git-workflow/SKILL.md
+  mcpx skills myserver skill://pdf/scripts/extract.py  # Load a skill file
+
 Registry (discover MCP servers):
   mcpx registry                           # Show registry help
   mcpx registry list                      # List all available servers
@@ -343,6 +390,51 @@ Environment:
   MCP_DAEMON_SOCKET                  Daemon socket path
   MCP_DAEMON_IDLE_MS                 Daemon idle timeout in milliseconds
   MCP_DAEMON_AUTO                    Comma-separated servers to always route via the daemon`);
+}
+
+function printResourcesHelp(): void {
+  console.log(`mcpx resources - List and read MCP resources on a server
+
+Usage:
+  mcpx resources <server>            List resources and resource templates
+  mcpx resources <server> <uri>      Read a resource by URI
+
+Options:
+  -h, --help                         Show this help message
+  -j, --json                         Output as JSON (full resources/read result)
+  -d, --with-descriptions            Include resource descriptions and MIME types
+  -c, --config <json|path>           Provide full MCP config as JSON or file path
+
+Examples:
+  mcpx resources docs
+  mcpx resources docs file:///guides/setup.md
+  mcpx resources docs skill://index.json`);
+}
+
+function printSkillsHelp(): void {
+  console.log(`mcpx skills - Discover and load Agent Skills served over MCP (SEP-2640)
+
+Skills are directories of files (minimally a SKILL.md) exposed as MCP
+resources under skill://<skill-path>/<file-path>. Discovery reads the
+well-known skill://index.json resource when present, falling back to
+scanning resources/list. Enumeration is optional: a skill URI is always
+directly readable even when no index lists it.
+
+Usage:
+  mcpx skills <server>               List skills discoverable on a server
+  mcpx skills <server> <name>        Load a skill's SKILL.md by skill path
+  mcpx skills <server> <uri>         Load any skill file by resource URI
+
+Options:
+  -h, --help                         Show this help message
+  -j, --json                         Output as JSON
+  -c, --config <json|path>           Provide full MCP config as JSON or file path
+
+Examples:
+  mcpx skills docs
+  mcpx skills docs git-workflow              # skill://git-workflow/SKILL.md
+  mcpx skills docs acme/billing/refunds      # nested skill path
+  mcpx skills docs skill://pdf-processing/references/FORMS.md`);
 }
 
 function validateAndSynthesizeInlineFlags(args: ParsedArgs): void {
@@ -451,6 +543,33 @@ async function main(): Promise<void> {
 
     case 'config':
       await configCommand({
+        json: args.json,
+        configInput: args.configInput,
+      });
+      break;
+
+    case 'resources':
+      if (args.subcommandHelp) {
+        printResourcesHelp();
+        break;
+      }
+      await resourcesCommand({
+        server: args.target ?? '',
+        uri: args.args,
+        json: args.json,
+        withDescriptions: args.withDescriptions,
+        configInput: args.configInput,
+      });
+      break;
+
+    case 'skills':
+      if (args.subcommandHelp) {
+        printSkillsHelp();
+        break;
+      }
+      await skillsCommand({
+        server: args.target ?? '',
+        skill: args.args,
         json: args.json,
         configInput: args.configInput,
       });

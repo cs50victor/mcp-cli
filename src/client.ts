@@ -1,7 +1,12 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  ReadResourceResult,
+  Resource,
+  ResourceTemplate,
+  Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 import {
   type HttpServerConfig,
   type ServerConfig,
@@ -299,4 +304,46 @@ export async function callTool(
     );
     return result;
   }, `call tool ${toolName}`);
+}
+
+export function serverSupportsResources(client: Client): boolean {
+  return client.getServerCapabilities()?.resources !== undefined;
+}
+
+export async function listResources(client: Client): Promise<Resource[]> {
+  return withRetry(async () => {
+    const resources: Resource[] = [];
+    let cursor: string | undefined;
+    do {
+      const result = await client.listResources({ cursor });
+      resources.push(...result.resources);
+      cursor = result.nextCursor;
+    } while (cursor);
+    return resources;
+  }, 'list resources');
+}
+
+export async function listResourceTemplates(
+  client: Client,
+): Promise<ResourceTemplate[]> {
+  return withRetry(async () => {
+    const templates: ResourceTemplate[] = [];
+    let cursor: string | undefined;
+    do {
+      const result = await client.listResourceTemplates({ cursor });
+      templates.push(...result.resourceTemplates);
+      cursor = result.nextCursor;
+    } while (cursor);
+    return templates;
+  }, 'list resource templates');
+}
+
+export async function readResource(
+  client: Client,
+  uri: string,
+): Promise<ReadResourceResult> {
+  return withRetry(
+    async () => client.readResource({ uri }, { timeout: getTimeoutMs() }),
+    `read resource ${uri}`,
+  );
 }

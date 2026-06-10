@@ -65,7 +65,18 @@ mcpx time
 mcpx time/get_current_time
 ```
 
-**3. Use daemon mode for stateful servers**
+**3. Read resources and load skills**
+
+```bash
+mcpx resources myserver                  # List resources and templates
+mcpx resources myserver file:///a.txt    # Read any resource by URI
+mcpx skills myserver                     # List skills served over MCP
+mcpx skills myserver git-workflow        # Load skill://git-workflow/SKILL.md
+```
+
+Skills follow [SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640): a skill is a directory of files (minimally a `SKILL.md`) exposed as MCP resources under `skill://<skill-path>/<file-path>`. Discovery reads the well-known `skill://index.json` resource when present and falls back to scanning `resources/list`. Enumeration is optional - a skill URI is always directly readable even when no index lists it.
+
+**4. Use daemon mode for stateful servers**
 
 ```bash
 mcpx daemon start playwright
@@ -93,6 +104,10 @@ mcpx list                         List available registry servers
 mcpx <server>                     Show live server tools and parameters
 mcpx <server>/<tool>              Show live tool JSON schema
 mcpx <server>/<tool> <json>       Call tool with arguments
+mcpx resources <server>           List server resources and templates
+mcpx resources <server> <uri>     Read a resource by URI
+mcpx skills <server>              List skills served by a server (SEP-2640)
+mcpx skills <server> <name|uri>   Load a skill's SKILL.md by name or URI
 mcpx daemon <start|stop|status>   Manage persistent connections
 mcpx registry list                List built-in registry servers
 mcpx registry get <name>          Show registry metadata and default config
