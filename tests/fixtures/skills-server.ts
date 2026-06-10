@@ -72,10 +72,17 @@ const INDEX_JSON = JSON.stringify({
 });
 
 async function startToolsOnlyServer(): Promise<void> {
-  const server = new McpServer({ name: 'tools-only-fixture', version: '0.0.1' });
-  server.registerTool('echo', { description: 'Echo a fixed string' }, async () => ({
-    content: [{ type: 'text', text: 'ok' }],
-  }));
+  const server = new McpServer({
+    name: 'tools-only-fixture',
+    version: '0.0.1',
+  });
+  server.registerTool(
+    'echo',
+    { description: 'Echo a fixed string' },
+    async () => ({
+      content: [{ type: 'text', text: 'ok' }],
+    }),
+  );
   await server.connect(new StdioServerTransport());
 }
 
@@ -141,7 +148,10 @@ async function startSkillsServer(): Promise<void> {
   server.registerResource(
     'release-notes',
     'docs://release-notes/SKILL.md',
-    { description: 'Draft release notes for a version', mimeType: 'text/markdown' },
+    {
+      description: 'Draft release notes for a version',
+      mimeType: 'text/markdown',
+    },
     async (uri) => ({
       contents: [
         { uri: uri.href, text: RELEASE_NOTES_MD, mimeType: 'text/markdown' },

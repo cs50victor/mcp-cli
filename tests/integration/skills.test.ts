@@ -10,7 +10,12 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 const CLI_PATH = join(import.meta.dir, '..', '..', 'src', 'index.ts');
-const FIXTURE_PATH = join(import.meta.dir, '..', 'fixtures', 'skills-server.ts');
+const FIXTURE_PATH = join(
+  import.meta.dir,
+  '..',
+  'fixtures',
+  'skills-server.ts',
+);
 
 const configJson = JSON.stringify({
   mcpServers: {
@@ -182,7 +187,7 @@ describe('skills command', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Skills (3):');
     expect(result.stdout).toContain('git-workflow');
-    expect(result.stdout).toContain("Git conventions");
+    expect(result.stdout).toContain('Git conventions');
     expect(result.stdout).toContain('skill://docs/{product}/SKILL.md');
   });
 
