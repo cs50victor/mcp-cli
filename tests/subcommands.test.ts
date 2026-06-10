@@ -63,6 +63,34 @@ describe('subcommand sync', () => {
       expect(result.stderr.toString()).toBe('');
     });
 
+    test('resources without server shows missing argument', async () => {
+      const result = await $`bun run ${CLI_PATH} resources`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).not.toContain('Did you mean');
+      expect(result.stderr.toString()).toContain('Missing required argument');
+    });
+
+    test('resources --help', async () => {
+      const result = await $`bun run ${CLI_PATH} resources --help`.nothrow();
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toContain('mcpx resources');
+      expect(result.stderr.toString()).toBe('');
+    });
+
+    test('skills without server shows missing argument', async () => {
+      const result = await $`bun run ${CLI_PATH} skills`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).not.toContain('Did you mean');
+      expect(result.stderr.toString()).toContain('Missing required argument');
+    });
+
+    test('skills --help', async () => {
+      const result = await $`bun run ${CLI_PATH} skills --help`.nothrow();
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toContain('SEP-2640');
+      expect(result.stderr.toString()).toBe('');
+    });
+
     test('registry refresh', async () => {
       const result =
         await $`MCPX_REGISTRY_URL=${LOCAL_REGISTRY_PATH} bun run ${CLI_PATH} registry refresh`.nothrow();
@@ -103,6 +131,18 @@ describe('subcommand sync', () => {
       const result = await $`bun run ${CLI_PATH} regsitry`.nothrow();
       expect(result.exitCode).toBe(1);
       expect(result.stderr.toString()).toContain("Did you mean 'registry'");
+    });
+
+    test('skils -> skills', async () => {
+      const result = await $`bun run ${CLI_PATH} skils myserver`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain("Did you mean 'skills'");
+    });
+
+    test('resorces -> resources', async () => {
+      const result = await $`bun run ${CLI_PATH} resorces myserver`.nothrow();
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr.toString()).toContain("Did you mean 'resources'");
     });
   });
 

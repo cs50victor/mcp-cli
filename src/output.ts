@@ -1,3 +1,8 @@
+import type {
+  ReadResourceResult,
+  Resource,
+  ResourceTemplate,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { ToolInfo } from './client.js';
 import type { ServerConfig } from './config.js';
 import { isHttpServer } from './config.js';
@@ -138,6 +143,104 @@ export function formatToolSchema(serverName: string, tool: ToolInfo): string {
 
   lines.push(`${color('Input Schema:', colors.bold)}`);
   lines.push(JSON.stringify(tool.inputSchema, null, 2));
+
+  return lines.join('\n');
+}
+
+export function formatResourceList(
+  serverName: string,
+  resources: Resource[],
+  templates: ResourceTemplate[],
+  withDescriptions: boolean,
+): string {
+  const lines: string[] = [];
+
+  lines.push(
+    `${color('Server:', colors.bold)} ${color(serverName, colors.cyan)}`,
+  );
+  lines.push('');
+  lines.push(`${color(`Resources (${resources.length}):`, colors.bold)}`);
+
+  for (const resource of resources) {
+    const name =
+      resource.name && resource.name !== resource.uri
+        ? ` - ${resource.name}`
+        : '';
+    lines.push(`  ${color(resource.uri, colors.green)}${name}`);
+    if (withDescriptions && resource.description) {
+      lines.push(`    ${color(resource.description, colors.dim)}`);
+    }
+    if (withDescriptions && resource.mimeType) {
+      lines.push(`    ${color(resource.mimeType, colors.dim)}`);
+    }
+  }
+
+  if (templates.length > 0) {
+    lines.push('');
+    lines.push(
+      `${color(`Resource Templates (${templates.length}):`, colors.bold)}`,
+    );
+    for (const template of templates) {
+      lines.push(
+        `  ${color(template.uriTemplate, colors.green)} - ${template.name}`,
+      );
+      if (withDescriptions && template.description) {
+        lines.push(`    ${color(template.description, colors.dim)}`);
+      }
+    }
+  }
+
+  lines.push('');
+  lines.push(
+    `${color('Tip:', colors.dim)} Run 'mcpx resources ${serverName} <uri>' to read a resource.`,
+  );
+
+  return lines.join('\n');
+}
+
+export function formatResourceContents(result: ReadResourceResult): string {
+  return result.contents
+    .map((content) => ('text' in content ? content.text : content.blob))
+    .join('\n');
+}
+
+export interface SkillListEntry {
+  name?: string;
+  description?: string;
+  uri: string;
+  template?: boolean;
+}
+
+export function formatSkillList(
+  serverName: string,
+  skills: SkillListEntry[],
+): string {
+  const lines: string[] = [];
+
+  lines.push(
+    `${color('Server:', colors.bold)} ${color(serverName, colors.cyan)}`,
+  );
+  lines.push('');
+  lines.push(`${color(`Skills (${skills.length}):`, colors.bold)}`);
+
+  for (const skill of skills) {
+    if (skill.template) {
+      lines.push(`  ${color(skill.uri, colors.green)} (template)`);
+    } else {
+      lines.push(`  ${color(skill.name ?? skill.uri, colors.green)}`);
+    }
+    if (skill.description) {
+      lines.push(`    ${color(skill.description, colors.dim)}`);
+    }
+    if (!skill.template && skill.name) {
+      lines.push(`    ${color(skill.uri, colors.dim)}`);
+    }
+  }
+
+  lines.push('');
+  lines.push(
+    `${color('Tip:', colors.dim)} Run 'mcpx skills ${serverName} <name|uri>' to load a skill.`,
+  );
 
   return lines.join('\n');
 }

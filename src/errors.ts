@@ -288,6 +288,67 @@ export function toolDisabledError(
   };
 }
 
+export function resourcesNotSupportedError(serverName: string): CliError {
+  return {
+    code: ErrorCode.SERVER_ERROR,
+    type: 'RESOURCES_NOT_SUPPORTED',
+    message: `Server "${serverName}" does not declare the resources capability`,
+    suggestion: `Run 'mcpx ${serverName}' to see what the server supports.`,
+  };
+}
+
+export function resourceListError(serverName: string, cause: string): CliError {
+  return {
+    code: ErrorCode.SERVER_ERROR,
+    type: 'RESOURCE_LIST_FAILED',
+    message: `Failed to list resources on server "${serverName}"`,
+    details: cause,
+    suggestion: `The server declares the resources capability but rejected resources/list. Check server logs or run 'mcpx ${serverName}' to inspect the server.`,
+  };
+}
+
+export function resourceReadError(
+  uri: string,
+  serverName: string,
+  cause: string,
+): CliError {
+  let suggestion = `Run 'mcpx resources ${serverName}' to list readable resources.`;
+
+  if (cause.includes('not found') || cause.includes('-32002')) {
+    suggestion = `Resource not found on the server. Run 'mcpx resources ${serverName}' to list available resources and templates.`;
+  }
+
+  return {
+    code: ErrorCode.SERVER_ERROR,
+    type: 'RESOURCE_READ_FAILED',
+    message: `Failed to read resource "${uri}" from server "${serverName}"`,
+    details: cause,
+    suggestion,
+  };
+}
+
+export function skillNotFoundError(
+  skill: string,
+  serverName: string,
+  availableSkills?: string[],
+): CliError {
+  const skillList = availableSkills?.slice(0, 5).join(', ') || '';
+  const moreCount =
+    availableSkills && availableSkills.length > 5
+      ? ` (+${availableSkills.length - 5} more)`
+      : '';
+
+  return {
+    code: ErrorCode.CLIENT_ERROR,
+    type: 'SKILL_NOT_FOUND',
+    message: `Skill "${skill}" not found on server "${serverName}"`,
+    details: availableSkills?.length
+      ? `Discovered skills: ${skillList}${moreCount}`
+      : undefined,
+    suggestion: `Run 'mcpx skills ${serverName}' to list discoverable skills. Skills absent from the index can still be loaded by full URI, e.g. skill://<name>/SKILL.md`,
+  };
+}
+
 export function registryFetchError(url: string, cause: string): CliError {
   return {
     code: ErrorCode.NETWORK_ERROR,
