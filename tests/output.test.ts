@@ -2,7 +2,7 @@
  * Unit tests for output formatting
  */
 
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import {
   formatError,
   formatJson,
@@ -12,12 +12,17 @@ import {
   formatServerList,
   formatToolResult,
   formatToolSchema,
+  redactServerConfigEnv,
 } from '../src/output';
 
 // Disable colors for testing
 process.env.NO_COLOR = '1';
 
 describe('output', () => {
+  afterEach(() => {
+    delete process.env.MCPX_SHOW_ENV_VALUES;
+  });
+
   describe('formatServerList', () => {
     test('formats servers with tools', () => {
       const servers = [
@@ -143,6 +148,32 @@ describe('output', () => {
       const data = { name: 'test', values: [1, 2, 3] };
       const output = formatJson(data);
       expect(JSON.parse(output)).toEqual(data);
+    });
+  });
+
+  describe('redactServerConfigEnv', () => {
+    test('redacts env values by default', () => {
+      const output = redactServerConfigEnv({
+        name: 'supabase',
+        config: {
+          command: 'bunx',
+          env: { MCPX_REGISTRY_AUTH_TOKEN: 'secret-key' },
+        },
+      });
+
+      expect(output.config.env.MCPX_REGISTRY_AUTH_TOKEN).toBe('<redacted>');
+    });
+
+    test('keeps env values when MCPX_SHOW_ENV_VALUES is enabled', () => {
+      process.env.MCPX_SHOW_ENV_VALUES = 'true';
+
+      const output = redactServerConfigEnv({
+        config: {
+          env: { API_KEY: 'secret-key' },
+        },
+      });
+
+      expect(output.config.env.API_KEY).toBe('secret-key');
     });
   });
 

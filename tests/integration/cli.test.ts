@@ -39,6 +39,7 @@ describe('CLI Integration Tests', () => {
         filesystem: {
           command: 'npx',
           args: ['-y', '@modelcontextprotocol/server-filesystem', tempDir],
+          env: { TEST_SECRET: 'secret-key' },
         },
       },
     });
@@ -189,6 +190,8 @@ describe('CLI Integration Tests', () => {
       expect(result.exitCode).toBe(0);
       const parsed = JSON.parse(result.stdout);
       expect(parsed.name).toBe('filesystem');
+      expect(parsed.config.env.TEST_SECRET).toBe('<redacted>');
+      expect(result.stdout).not.toContain('secret-key');
       expect(parsed.tools).toBeDefined();
       expect(Array.isArray(parsed.tools)).toBe(true);
     });
