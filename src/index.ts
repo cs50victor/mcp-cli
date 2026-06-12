@@ -318,7 +318,6 @@ Environment Variables:
   MCPX_REGISTRY_URL        Custom registry URL (default: GitHub-hosted registry)
   MCPX_REGISTRY_AUTH_TOKEN  Auth token for protected registries and registry-hosted MCP URLs
   MCPX_REGISTRY_AUTH_HEADER_TYPE  Header name or scheme (e.g. x-api-key, bearer)
-  MCPX_SHOW_ENV_VALUES     Set to "true" to show raw env values in config JSON
 
 Examples:
   mcpx                                    # Show help

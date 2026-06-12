@@ -134,7 +134,6 @@ Useful environment variables:
 - `MCPX_REGISTRY_URL`
 - `MCPX_REGISTRY_AUTH_TOKEN`
 - `MCPX_REGISTRY_AUTH_HEADER_TYPE`
-- `MCPX_SHOW_ENV_VALUES`
 
 ## License
 
