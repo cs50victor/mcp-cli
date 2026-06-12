@@ -1,4 +1,5 @@
 import { type ConfigPathsResult, getConfigPaths } from '../config.js';
+import { redactServerConfigEnv, shouldShowEnvValues } from '../output.js';
 
 export interface ConfigOptions {
   json: boolean;
@@ -19,8 +20,25 @@ function formatTextOutput(result: ConfigPathsResult): string {
   return lines.join('\n');
 }
 
+function redactInlineConfigEnv(value: string | undefined): string | undefined {
+  if (!value || shouldShowEnvValues()) {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(redactServerConfigEnv(JSON.parse(value)));
+  } catch {
+    return value;
+  }
+}
+
 function formatJsonOutput(result: ConfigPathsResult): string {
-  return JSON.stringify(result, null, 2);
+  const output = {
+    ...result,
+    envVar: redactInlineConfigEnv(result.envVar),
+  };
+
+  return JSON.stringify(output, null, 2);
 }
 
 export async function configCommand(options: ConfigOptions): Promise<void> {

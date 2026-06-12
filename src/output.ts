@@ -8,6 +8,8 @@ import type { ServerConfig } from './config.js';
 import { isHttpServer } from './config.js';
 import type { RegistryServer } from './registry.js';
 
+const REDACTED_ENV_VALUE = '<redacted>';
+
 const colors = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
@@ -26,6 +28,46 @@ function shouldColorize(): boolean {
 function color(text: string, colorCode: string): string {
   if (!shouldColorize()) return text;
   return `${colorCode}${text}${colors.reset}`;
+}
+
+export function shouldShowEnvValues(): boolean {
+  const value = process.env.MCPX_SHOW_ENV_VALUES?.toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on';
+}
+
+function redactEnvRecord(
+  env: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.keys(env).map((key) => [key, REDACTED_ENV_VALUE]),
+  );
+}
+
+export function redactServerConfigEnv<T>(data: T): T {
+  if (shouldShowEnvValues()) {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => redactServerConfigEnv(item)) as T;
+  }
+
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const input = data as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (key === 'env' && value && typeof value === 'object') {
+      output[key] = redactEnvRecord(value as Record<string, unknown>);
+    } else {
+      output[key] = redactServerConfigEnv(value);
+    }
+  }
+
+  return output as T;
 }
 
 export function formatServerList(

@@ -25,6 +25,7 @@ describe('config command', () => {
   afterEach(async () => {
     delete process.env.MCPX_USE_LOCAL_CONFIG;
     delete process.env.MCP_CONFIG_PATH;
+    delete process.env.MCPX_SHOW_ENV_VALUES;
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -103,6 +104,44 @@ describe('config command', () => {
     expect(parsed.active).toBe(configPath);
     expect(parsed.localDiscoveryEnabled).toBe(false);
     expect(Array.isArray(parsed.searchPaths)).toBe(true);
+  });
+
+  test('redacts env values from inline MCP_CONFIG_PATH JSON by default', async () => {
+    const inlineConfig = JSON.stringify({
+      mcpServers: {
+        supabase: {
+          command: 'bunx',
+          env: { MCPX_REGISTRY_AUTH_TOKEN: 'secret-key' },
+        },
+      },
+    });
+
+    const result = await runCli(['config', '--json'], {
+      MCP_CONFIG_PATH: inlineConfig,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain('secret-key');
+    expect(result.stdout).toContain('<redacted>');
+  });
+
+  test('shows env values from inline MCP_CONFIG_PATH JSON when enabled', async () => {
+    const inlineConfig = JSON.stringify({
+      mcpServers: {
+        supabase: {
+          command: 'bunx',
+          env: { MCPX_REGISTRY_AUTH_TOKEN: 'secret-key' },
+        },
+      },
+    });
+
+    const result = await runCli(['config', '--json'], {
+      MCP_CONFIG_PATH: inlineConfig,
+      MCPX_SHOW_ENV_VALUES: 'true',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('secret-key');
   });
 
   test('shows MCP_CONFIG_PATH when set', async () => {

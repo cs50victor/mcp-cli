@@ -20,6 +20,7 @@ import {
   formatJson,
   formatServerDetails,
   formatToolSchema,
+  redactServerConfigEnv,
 } from '../output.js';
 
 export interface InfoOptions {
@@ -152,7 +153,7 @@ export async function infoCommand(options: InfoOptions): Promise<void> {
         console.log(
           formatJson({
             name: serverName,
-            config: serverConfig,
+            config: redactServerConfigEnv(serverConfig),
             tools: filteredTools.map((t) => ({
               name: t.name,
               description: t.description,
