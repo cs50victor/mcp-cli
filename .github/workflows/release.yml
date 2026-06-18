@@ -135,28 +135,15 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout homebrew tap
-        uses: actions/checkout@v6
-        with:
-          repository: cs50victor/homebrew-mcpx
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.2"
-
-      - name: Get version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-
-      - name: Update formula
-        run: ruby scripts/release.rb "${{ steps.version.outputs.VERSION }}"
-
-      - name: Commit and push
+      - name: Trigger tap update
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Release v${{ steps.version.outputs.VERSION }}"
-          git push
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          gh workflow run update-formula.yml \
+            --repo cs50victor/homebrew-tap \
+            -f formula=mcpx \
+            -f tag="${GITHUB_REF#refs/tags/}" \
+            -f repository=cs50victor/mcpx \
+            -f description="Lightweight CLI for interacting with MCP (Model Context Protocol) servers" \
+            -f artifact_url="https://github.com/cs50victor/mcpx/releases/download/v#{version}/mcpx-{target}"
