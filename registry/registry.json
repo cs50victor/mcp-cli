@@ -230,6 +230,19 @@
       "notes": "Replace <project-ref> with your project ID from Supabase dashboard. Uses OAuth via browser. Add ?read_only=true for safer ops. Add ?features=database,docs to limit tool groups. For dev/testing only."
     },
     {
+      "name": "deepwiki",
+      "description": "Ask questions and read AI-generated documentation for public GitHub repositories via DeepWiki",
+      "recommended": {
+        "command": "bunx",
+        "args": [
+          "-y",
+          "mcp-remote",
+          "https://mcp.deepwiki.com/mcp"
+        ]
+      },
+      "notes": "Free remote server, no authentication required. Public repositories only; private repos need a Devin account with the Devin MCP server. Uses streamable HTTP at /mcp (the /sse endpoint is deprecated)."
+    },
+    {
       "name": "shadcn",
       "description": "Browse, search, and install shadcn/ui components from registries",
       "recommended": {
